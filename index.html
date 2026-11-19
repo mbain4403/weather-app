@@ -1,0 +1,1453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Weather 2.0 — Live Weather, Radar, Globe & Storm Tracker</title>
+<style>
+  :root{
+    --bg:#eef2f6; --surface:#ffffff; --surface2:#e7edf3; --border:#cfd9e4;
+    --text:#0f1c2e; --dim:#5b6b80; --accent:#0369a1; --accent-soft:#e0f2fe;
+    --severe:#dc2626; --warn:#b45309; --good:#15803d;
+    --viewport:#0b1626; --viewport-text:#e8eef7; --viewport-dim:#8ca0bc;
+    --radius:14px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0a111d; --surface:#121e30; --surface2:#1a2a42; --border:#26364e;
+      --text:#e8eef7; --dim:#93a6bf; --accent:#38bdf8; --accent-soft:#12314a;
+      --severe:#f87171; --warn:#fbbf24; --good:#4ade80;
+      --viewport:#0b1626; --viewport-text:#e8eef7; --viewport-dim:#8ca0bc;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 16px 48px}
+  button{font:inherit;cursor:pointer}
+  button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  h1,h2{letter-spacing:-0.01em}
+  .section-title{margin:0 0 4px;font-size:19px;font-weight:800}
+  .section-sub{margin:0 0 14px;font-size:13.5px;line-height:1.45;color:var(--dim)}
+  section{margin-top:34px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+  .darkcard{background:var(--viewport);color:var(--viewport-text);border-radius:var(--radius)}
+  .chip{border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--dim)}
+  .chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chip.fire.active{background:var(--severe);border-color:var(--severe)}
+  .btn-primary{background:var(--accent);color:#fff;border:none;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:700}
+  .btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700}
+  .unit-toggle{display:flex;overflow:hidden;border-radius:999px;border:1px solid var(--border)}
+  .unit-toggle button{border:none;padding:7px 13px;font-size:14px;font-weight:700;background:var(--surface);color:var(--dim)}
+  .unit-toggle button.on{background:var(--accent);color:#fff}
+  .grid2{display:grid;gap:16px}
+  @media(min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
+  .readouts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 12px;margin-top:20px}
+  @media(min-width:640px){.readouts{grid-template-columns:repeat(4,1fr)}}
+  .ro-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--viewport-dim);margin:0}
+  .ro-value{font-size:15px;font-weight:600;margin:2px 0 0;line-height:1.35;overflow-wrap:break-word}
+  .ro-sub{font-size:11px;color:var(--viewport-dim);margin:1px 0 0;line-height:1.35;overflow-wrap:break-word}
+  .tile-grid{display:grid;gap:12px}
+  @media(min-width:640px){.tile-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:980px){.tile-grid{grid-template-columns:repeat(3,1fr)}}
+  .tile{padding:14px}
+  .tile-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .tile-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0}
+  .pill{border-radius:999px;padding:2px 9px;font-size:11px;font-weight:800;white-space:nowrap}
+  .tile-value{font-size:21px;font-weight:700;margin:6px 0 2px}
+  .tile-detail{font-size:13px;line-height:1.45;color:var(--dim);margin:0}
+  .hour-strip{display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:thin}
+  .hour-cell{flex:0 0 54px;display:flex;flex-direction:column;align-items:center;border-radius:10px;background:var(--surface2);padding:8px 2px}
+  .day-row{display:flex;align-items:center;gap:12px;padding:10px 14px}
+  .day-row + .day-row{border-top:1px solid var(--border)}
+  .tempbar{position:relative;height:6px;border-radius:999px;background:var(--surface2);flex:1;min-width:40px}
+  .tempbar > div{position:absolute;top:0;height:6px;border-radius:999px;background:linear-gradient(90deg,#38bdf8,#f5a623)}
+  .alert-box{border:2px solid var(--severe);border-radius:var(--radius);background:var(--surface);padding:14px 16px;margin-bottom:10px}
+  .alert-box summary{cursor:pointer;font-weight:800;color:var(--severe)}
+  .search-wrap{position:relative;margin-top:12px}
+  .search-input{width:100%;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);padding:11px 14px;font-size:16px}
+  .search-results{position:absolute;left:0;right:0;top:100%;margin-top:6px;z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 40px rgba(2,10,24,.25);overflow:hidden}
+  .search-results button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px 14px;color:var(--text)}
+  .search-results button + button{border-top:1px solid var(--border)}
+  .layer-btn{border:none;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:#1b2c4a;color:#b9c9e2}
+  .layer-btn.on{background:#38bdf8;color:#06121f}
+  .legend-bar{height:8px;border-radius:999px;flex:1}
+  .radar-grid{display:grid;grid-template-columns:repeat(3,1fr)}
+  .radar-cell{position:relative;aspect-ratio:1;background:#0d1a2e}
+  .radar-cell img{position:absolute;inset:0;width:100%;height:100%}
+  .stat-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0}
+  .stat-value{font-size:18px;font-weight:700;margin:2px 0 0}
+  .stat-sub{font-size:12px;color:var(--dim);margin:1px 0 0}
+  .link-pill{display:inline-block;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;background:var(--accent-soft);color:var(--accent);text-decoration:none}
+  .saved-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px}
+  .saved-row + .saved-row{border-top:1px solid var(--border)}
+  .err-box{border:1px solid var(--severe);border-radius:var(--radius);background:var(--surface);padding:18px;margin-top:24px}
+  footer{border-top:1px solid var(--border);margin-top:40px;padding-top:14px;font-size:12px;line-height:1.6;color:var(--dim)}
+  .track-list{max-height:150px;overflow-y:auto}
+  .track-list p{display:flex;justify-content:space-between;gap:8px;margin:0;padding:3px 0;font-size:12px;color:var(--dim)}
+  .track-list p + p{border-top:1px solid var(--border)}
+  input[type=range]{accent-color:#38bdf8}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header style="padding-top:20px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px">
+      <div style="min-width:0">
+        <p style="margin:0 0 2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">Weather 2.0</p>
+        <h1 id="placeTitle" style="margin:0;font-size:26px;font-weight:800">New York<span style="color:var(--dim);font-weight:600">, New York</span></h1>
+        <p id="placeMeta" class="mono" style="margin:3px 0 0;font-size:12px;color:var(--dim)">40.7128, -74.0060</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="unit-toggle" role="group" aria-label="Units">
+          <button type="button" id="unitF" class="on" aria-label="Fahrenheit units">°F</button>
+          <button type="button" id="unitC" aria-label="Celsius units">°C</button>
+        </div>
+        <button type="button" class="btn-ghost" id="locBtn">◎ Use my location</button>
+        <button type="button" class="btn-ghost" id="searchToggle" aria-expanded="false">⌕ Search</button>
+        <button type="button" class="btn-primary" id="refreshBtn">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="search-wrap" id="searchWrap" hidden>
+      <label class="sr-only" for="searchInput">Search for a city or town</label>
+      <input id="searchInput" class="search-input" type="text" placeholder="Search any city or town — try “Denver” or “London”" autocomplete="off" />
+      <div class="search-results" id="searchResults" hidden></div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px" id="chips"></div>
+    <p id="asOfLine" class="mono" style="margin:8px 0 0;font-size:12px;color:var(--dim)"></p>
+    <p id="locStatus" role="status" style="margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--accent)" hidden></p>
+  </header>
+
+  <div id="loadingState" style="padding:70px 0;text-align:center">
+    <p style="font-size:18px;font-weight:700;margin:0">Pulling live data…</p>
+    <p style="font-size:14px;color:var(--dim);margin:6px 0 0">Forecast models, air quality, alerts and the global grid — straight from the source feeds, in your browser.</p>
+  </div>
+
+  <div id="errorState" class="err-box" hidden>
+    <p style="font-weight:800;color:var(--severe);margin:0">The weather service is unreachable</p>
+    <p id="errorText" style="font-size:14px;color:var(--dim);margin:6px 0 0"></p>
+    <p id="errorDetail" class="mono" style="font-size:12px;color:var(--dim);margin:6px 0 0" hidden></p>
+    <button type="button" class="btn-primary" id="retryBtn" style="margin-top:12px">Try again</button>
+  </div>
+
+  <main id="mainContent" hidden>
+    <div id="alertsArea" style="margin-top:20px"></div>
+
+    <!-- Current + globe -->
+    <section aria-label="Current conditions and 3D globe" style="margin-top:20px">
+      <div class="grid2">
+        <div class="darkcard" style="padding:20px">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div>
+              <p id="curCond" style="margin:0;font-size:14px;font-weight:600;color:var(--viewport-dim)"></p>
+              <p id="curTemp" class="mono" style="margin:4px 0 0;font-size:74px;font-weight:600;line-height:1;letter-spacing:-0.03em"></p>
+              <p id="curFeels" style="margin:10px 0 0;font-size:14px;color:var(--viewport-dim)"></p>
+            </div>
+            <p id="curTime" class="mono" style="margin:0;text-align:right;font-size:12px;line-height:1.6;color:var(--viewport-dim)"></p>
+          </div>
+          <div class="readouts" id="curReadouts"></div>
+        </div>
+
+        <div class="darkcard" style="padding:16px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px" role="group" aria-label="Globe data layer" id="layerBtns"></div>
+          <div style="max-width:430px;margin:8px auto 0">
+            <canvas id="globeCanvas" role="img" aria-label="Interactive 3D globe. Drag to rotate." style="display:block;width:100%;aspect-ratio:1;touch-action:none;user-select:none"></canvas>
+            <p id="globeFallback" hidden style="text-align:center;font-size:14px;color:var(--viewport-dim);padding:60px 0">Global grid unavailable right now.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:0 4px;margin-top:4px">
+            <span id="legendMin" class="mono" style="font-size:11px;color:var(--viewport-dim)"></span>
+            <div class="legend-bar" id="legendBar"></div>
+            <span id="legendMax" class="mono" style="font-size:11px;color:var(--viewport-dim)"></span>
+          </div>
+          <p id="globeNote" style="margin:8px 4px 0;font-size:12px;line-height:1.5;color:var(--viewport-dim)"></p>
+          <p style="margin:6px 4px 0;font-size:11px;color:var(--viewport-dim)"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:var(--viewport-dim);text-decoration:underline">© OpenStreetMap contributors</a> · <a href="https://www.facebook.com/maps/attribution_terms" target="_blank" rel="noopener" style="color:var(--viewport-dim);text-decoration:underline">Map Data Legal Notices</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Fire district -->
+    <section aria-label="Fire weather">
+      <h2 class="section-title">🔥 Fire weather</h2>
+      <p class="section-sub">For the selected place: humidity, wind, gusts and dryness — the factors that drive fire weather — plus a Normal / Watch / Elevated / Red Flag flag. Red Flag and Fire Weather warnings from the National Weather Service appear in the alerts at the top when they are in effect.</p>
+      <div id="fireCards"></div>
+    </section>
+
+    <!-- Hourly -->
+    <section aria-label="Hourly forecast">
+      <h2 class="section-title">Hour by hour</h2>
+      <p class="section-sub">Next 48 hours · temperature and chance of precipitation</p>
+      <div class="card" style="padding:12px">
+        <div id="hourlyChart"></div>
+        <div class="hour-strip" id="hourStrip" aria-label="Next 24 hours at a glance"></div>
+      </div>
+    </section>
+
+    <!-- Incidences -->
+    <section aria-label="Weather incidences">
+      <h2 class="section-title">All weather incidences</h2>
+      <p class="section-sub">Every hazard type, computed from the live forecast fields for the next 48 hours — not a generic summary</p>
+      <div class="tile-grid" id="incidenceGrid"></div>
+    </section>
+
+    <!-- Hurricane tracker -->
+    <section aria-label="Hurricane and tropical tracker">
+      <h2 class="section-title">🌀 Hurricane &amp; tropical tracker</h2>
+      <p class="section-sub">Live from the NOAA National Hurricane Center — every active tropical storm and hurricane in the Atlantic, East Pacific and Central Pacific, with the official NHC forecast track. Tracks are also plotted in red on the globe above.</p>
+      <div id="tropicalArea"></div>
+    </section>
+
+    <!-- Radar -->
+    <section aria-label="Radar">
+      <h2 class="section-title">Radar</h2>
+      <p class="section-sub">Animated precipitation radar centered on the selected place (RainViewer), laid over a street map with state and province boundaries. The amber ring marks the place.</p>
+      <div id="radarArea" style="max-width:640px"></div>
+    </section>
+
+    <!-- Models -->
+    <section aria-label="Forecast model comparison">
+      <h2 class="section-title">Model face-off · ECMWF vs GFS vs ICON</h2>
+      <p class="section-sub">The three big global models, run side by side on the same hours — where they agree, trust it; where they split, that's the uncertainty</p>
+      <div id="modelArea"></div>
+    </section>
+
+    <!-- 10-day -->
+    <section aria-label="Ten day forecast">
+      <h2 class="section-title">10-day outlook</h2>
+      <p class="section-sub">Daily highs, lows, precipitation and wind</p>
+      <div class="card" id="dailyList" style="overflow:hidden"></div>
+    </section>
+
+    <!-- Saved places -->
+    <section aria-label="My saved places">
+      <h2 class="section-title">My places</h2>
+      <p class="section-sub">Saved places are kept in this browser, so they're still here next visit. Use Search above to add your own town.</p>
+      <div id="savedArea"></div>
+    </section>
+
+    <footer>
+      Data: Open-Meteo (forecast blend, ECMWF IFS / NOAA GFS / DWD ICON model runs, CAMS air quality &amp; pollen) · US National Weather Service alerts · NOAA National Hurricane Center (active storms &amp; forecast tracks) · RainViewer radar · Geocoding by Open-Meteo. Forecasts are model output, not a guarantee — for life-safety decisions follow NWS and local officials.
+      <span id="globeAsOf"></span>
+    </footer>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ── Constants & helpers (ported from Weather 2.0) ─────────────────── */
+var DEFAULT_PLACE = { name:"New York", region:"New York", country:"United States", lat:40.7128, lon:-74.006, timezone:"America/New_York" };
+
+var WMO = {0:["Clear sky","☀️"],1:["Mainly clear","🌤️"],2:["Partly cloudy","⛅"],3:["Overcast","☁️"],45:["Fog","🌫️"],48:["Rime fog","🌫️"],51:["Light drizzle","🌦️"],53:["Drizzle","🌦️"],55:["Dense drizzle","🌦️"],56:["Freezing drizzle","🌧️"],57:["Freezing drizzle","🌧️"],61:["Light rain","🌧️"],63:["Rain","🌧️"],65:["Heavy rain","🌧️"],66:["Freezing rain","🧊"],67:["Freezing rain","🧊"],71:["Light snow","🌨️"],73:["Snow","🌨️"],75:["Heavy snow","❄️"],77:["Snow grains","🌨️"],80:["Light showers","🌦️"],81:["Showers","🌦️"],82:["Violent showers","⛈️"],85:["Snow showers","🌨️"],86:["Snow showers","🌨️"],95:["Thunderstorm","⛈️"],96:["Thunderstorm, hail","⛈️"],99:["Thunderstorm, heavy hail","⛈️"]};
+function codeInfo(c){ if(c==null) return {label:"—",icon:"·"}; var e=WMO[c]; return e?{label:e[0],icon:e[1]}:{label:"Code "+c,icon:"·"}; }
+function isThunder(c){ return c===95||c===96||c===99; }
+function isSnow(c){ return c!=null && [71,73,75,77,85,86].indexOf(c)>=0; }
+function isFreezing(c){ return c!=null && [56,57,66,67].indexOf(c)>=0; }
+var DIRS=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+function compass(d){ if(d==null) return "—"; return DIRS[Math.round(d/22.5)%16]||"—"; }
+function hourLabel(iso){ var h=Number(iso.slice(11,13)); if(!isFinite(h)) return iso.slice(11,16); var s=h>=12?"PM":"AM"; var h12=h%12===0?12:h%12; return h12+" "+s; }
+var DAY_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function hourAxisLabel(iso){ var h=Number(iso.slice(11,13)); if(h===0){ var p=iso.slice(0,10).split("-").map(Number); return (DAY_SHORT[new Date(p[0],p[1]-1,p[2]).getDay()]||"")+" 12a"; } return hourLabel(iso).replace(" ","").toLowerCase(); }
+function timeLabel(iso){ if(!iso) return "—"; var part=iso.slice(11,16); var b=part.split(":"); var h=Number(b[0]); var s=h>=12?"PM":"AM"; var h12=h%12===0?12:h%12; return h12+":"+(b[1]||"00")+" "+s; }
+/* "1 hour" / "3 hours" — every hour count routes through here so a
+   single hour never reads "1 hours" or hides behind an "hour(s)" hedge. */
+function hoursLabel(n){ return n+" hour"+(n===1?"":"s"); }
+/* Radar frame clock in the VIEWED PLACE's timezone, with the zone named.
+   RainViewer frame times are UTC instants; formatting them in the
+   viewer's own zone showed the wrong hour whenever the viewer wasn't
+   in the place's zone. Places whose timezone is "auto" (device
+   location) fall back to the viewer's zone, which for a device fix is
+   the place's zone anyway. */
+function formatFrameTime(unixSec, tz){
+  var d=new Date(unixSec*1000);
+  try{
+    var opts={hour:"numeric",minute:"2-digit",timeZoneName:"short"};
+    if(tz && tz!=="auto") opts.timeZone=tz;
+    return d.toLocaleTimeString("en-US", opts);
+  }catch(e){
+    return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  }
+}
+var WEEKDAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function weekday(ds,i){ if(i===0) return "Today"; var p=ds.split("-").map(Number); return WEEKDAYS[new Date(p[0],p[1]-1,p[2]).getDay()]||""; }
+function shortDate(ds){ var p=ds.split("-"); return Number(p[1])+"/"+Number(p[2]); }
+function formatAsOf(iso,tz){ try{ return new Intl.DateTimeFormat("en-US",{timeZone:tz,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}).format(new Date(iso)); }catch(e){ return new Date(iso).toLocaleString(); } }
+function formatLatLon(lat,lon){ return Math.abs(lat).toFixed(1)+"°"+(lat>=0?"N":"S")+" "+Math.abs(lon).toFixed(1)+"°"+(lon>=0?"E":"W"); }
+function aqiCat(a){ if(a==null) return "Unavailable"; if(a<=50) return "Good"; if(a<=100) return "Moderate"; if(a<=150) return "Unhealthy for sensitive groups"; if(a<=200) return "Unhealthy"; if(a<=300) return "Very unhealthy"; return "Hazardous"; }
+function uvCat(uv){ if(uv==null) return "—"; if(uv<3) return "Low"; if(uv<6) return "Moderate"; if(uv<8) return "High"; if(uv<11) return "Very high"; return "Extreme"; }
+function pollenLevel(v){ if(v==null) return "No data"; if(v<=0) return "None"; if(v<10) return "Low"; if(v<50) return "Moderate"; if(v<200) return "High"; return "Very high"; }
+function tropicalColor(cat,cls){ if(cat==="Category 5") return "#c084fc"; if(cat==="Category 4") return "#f4536a"; if(cat==="Category 3") return "#fb923c"; if(cat==="Category 2") return "#facc15"; if(cat==="Category 1") return "#fde68a"; if(cls==="TS"||cls==="STS") return "#38bdf8"; return "#8ca0bc"; }
+function tempColor(f){ var stops=[[-20,[147,51,234]],[0,[59,130,246]],[25,[56,189,248]],[45,[74,222,128]],[65,[250,204,21]],[85,[249,115,22]],[105,[239,68,68]]]; for(var i=1;i<stops.length;i++){ var t1=stops[i-1][0],c1=stops[i-1][1],t2=stops[i][0],c2=stops[i][1]; if(f<=t2||i===stops.length-1){ var k=Math.min(1,Math.max(0,(f-t1)/(t2-t1))); return "rgb("+Math.round(c1[0]+(c2[0]-c1[0])*k)+","+Math.round(c1[1]+(c2[1]-c1[1])*k)+","+Math.round(c1[2]+(c2[2]-c1[2])*k)+")"; } } return "rgb(56,189,248)"; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
+
+/* Units — API values are always °F / mph / inches */
+var units = "imperial";
+function temp(v){ if(v==null) return "—"; var n=units==="imperial"?v:(v-32)*5/9; return Math.round(n)+"°"; }
+function tempVal(v){ return units==="imperial"?v:(v-32)*5/9; }
+function speed(v){ if(v==null) return "—"; return units==="imperial"?Math.round(v)+" mph":Math.round(v*1.60934)+" km/h"; }
+function precip(v){ if(v==null) return "—"; return units==="imperial"?v.toFixed(2)+" in":(v*25.4).toFixed(1)+" mm"; }
+function snowAmt(cm){ if(cm==null) return "—"; return units==="imperial"?(cm/2.54).toFixed(1)+" in":cm.toFixed(1)+" cm"; }
+function visib(m){ if(m==null) return "—"; return units==="imperial"?(m/1609.34).toFixed(1)+" mi":(m/1000).toFixed(1)+" km"; }
+
+/* ── State ──────────────────────────────────────────────────────────── */
+/* Saved places persist in this browser (localStorage) so they survive a
+   refresh; if storage is unavailable (private mode, blocked storage) the
+   page still works and saves simply last for the visit. */
+var SAVED_KEY = "weather2shareable.saved.v1";
+function loadSaved(){
+  try{
+    var raw = window.localStorage.getItem(SAVED_KEY);
+    if(!raw) return [];
+    var arr = JSON.parse(raw);
+    if(!Array.isArray(arr)) return [];
+    return arr.filter(function(p){ return p && typeof p.name==="string" && isFinite(Number(p.lat)) && isFinite(Number(p.lon)); }).map(function(p){
+      return { name:p.name, region:(typeof p.region==="string"?p.region:""), country:(typeof p.country==="string"?p.country:""), lat:Number(p.lat), lon:Number(p.lon), timezone:(typeof p.timezone==="string"?p.timezone:"auto") };
+    });
+  }catch(e){ return []; }
+}
+function persistSaved(){
+  try{ window.localStorage.setItem(SAVED_KEY, JSON.stringify(state.saved)); }catch(e){}
+}
+var state = { place: DEFAULT_PLACE, weather: null, globePoints: [], globeAsOf: null, radar: null, tropical: null, saved: loadSaved(), forceTick: 0, userPicked: false };
+var weatherCache = {}; /* "lat,lon" -> {at, data} */
+var CACHE_MS = 15*60*1000;
+
+/* Every feed is read directly from its own provider — the viewer's
+   coordinates go only to the weather services the page is built on,
+   never to a third-party relay. Resilience comes from retrying the
+   direct read itself, three ways: attempts alternate between fetch()
+   and XMLHttpRequest (the two stacks fail differently in some phone
+   browsers and in-app webviews, so one often gets through when the
+   other cannot), each retry carries a cache-busting parameter so a
+   stuck intermediary cache cannot poison every attempt, and
+   network-level failures (offline blips, dropped connections,
+   timeouts) and transient upstream errors are retried with backoff
+   while real 4xx responses fail fast. On top of this, loadMain keeps
+   retrying on its own after a failure (see below), so a connection
+   that only comes back a little later still loads the page instead
+   of leaving the error screen up. */
+function fetchDirect(url, headers, maxRetries, asText, timeoutMs, noBust){
+  var RETRIES = (typeof maxRetries === "number") ? maxRetries : 3;
+  var TIMEOUT_MS = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : 15000;
+  function hostOf(u){ try{ return new URL(u).host; }catch(e){ return u; } }
+  function httpError(status, u){ var err=new Error("Upstream "+status+" for "+hostOf(u)); err.status=status; return err; }
+  function netError(u){ return new Error("Failed to fetch from "+hostOf(u)); }
+  function parseBody(text, u){
+    if (asText) return text;
+    try{ return JSON.parse(text); }
+    catch(e){ throw new Error("Unreadable response from "+hostOf(u)); }
+  }
+  function viaFetch(u){
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function(){ try{ ctrl.abort(); }catch(e){} }, TIMEOUT_MS) : null;
+    var init = { headers: headers || {} };
+    if (ctrl) init.signal = ctrl.signal;
+    return fetch(u, init).then(function(r){
+      if (timer) clearTimeout(timer);
+      if(!r.ok) throw httpError(r.status, u);
+      return r.text().then(function(t){ return parseBody(t, u); });
+    }).catch(function(err){
+      if (timer) clearTimeout(timer);
+      if (err && err.status) throw err;
+      throw netError(u);
+    });
+  }
+  function viaXhr(u){
+    return new Promise(function(resolve, reject){
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", u, true);
+      try{ xhr.timeout = TIMEOUT_MS; }catch(e){}
+      if (headers){ for (var k in headers){ try{ xhr.setRequestHeader(k, headers[k]); }catch(e){} } }
+      xhr.onload = function(){
+        if (xhr.status >= 200 && xhr.status < 300){
+          try{ resolve(parseBody(xhr.responseText, u)); }catch(e){ reject(e); }
+        } else reject(httpError(xhr.status, u));
+      };
+      xhr.onerror = function(){ reject(netError(u)); };
+      xhr.ontimeout = function(){ reject(netError(u)); };
+      xhr.onabort = function(){ reject(netError(u)); };
+      xhr.send();
+    });
+  }
+  function attempt(n){
+    var u = url;
+    /* Some hosts (api.weather.gov) reject unknown query parameters with a
+       400, so callers for those hosts pass noBust and retry the clean URL. */
+    if (n > 0 && !noBust) u += (u.indexOf("?") >= 0 ? "&" : "?") + "_r=" + n + "-" + Date.now();
+    var job = (n % 2 === 1 && typeof XMLHttpRequest !== "undefined") ? viaXhr(u) : viaFetch(u);
+    return job.catch(function(err){
+      var retryable = !err || !err.status || err.status===429 || err.status>=500;
+      if (n < RETRIES && retryable){
+        return new Promise(function(res){ setTimeout(res, 800*Math.pow(2,n)); }).then(function(){ return attempt(n+1); });
+      }
+      throw err;
+    });
+  }
+  return attempt(0);
+}
+function fetchJson(url, headers, maxRetries, timeoutMs, noBust){
+  return fetchDirect(url, headers, maxRetries, false, timeoutMs, noBust);
+}
+function fetchText(url){
+  return fetchDirect(url, null, 1, true);
+}
+function numOrNull(v){ return (typeof v==="number" && isFinite(v)) ? v : null; }
+function numSeries(a){ if(!Array.isArray(a)) return []; return a.map(function(x){ return (typeof x==="number"&&isFinite(x))?x:null; }); }
+function strSeries(a){ if(!Array.isArray(a)) return []; return a.map(function(x){ return typeof x==="string"?x:""; }); }
+function curHourIdx(times, ct){ var idx=0; for(var i=0;i<times.length;i++){ if(times[i] && times[i]<=ct) idx=i; else break; } return idx; }
+
+/* ── Data fetching (browser-direct, same feeds as Weather 2.0) ─────── */
+function fetchAlerts(lat, lon){
+  /* Secondary feed: bounded retries/timeout (and no cache-buster — the NWS
+     API 400s on unknown query params) so a slow alerts host can never hold
+     the main forecast hostage on a weak phone connection. */
+  return fetchJson("https://api.weather.gov/alerts/active?point="+lat+","+lon, { "Accept":"application/geo+json" }, 1, 8000, true).then(function(raw){
+    var feats = Array.isArray(raw.features) ? raw.features : [];
+    var rank = { Extreme:0, Severe:1, Moderate:2, Minor:3, Unknown:4 };
+    var alerts = feats.map(function(f){
+      var p = (f && f.properties) || {};
+      return { event:p.event||"Weather alert", severity:p.severity||"Unknown", headline:p.headline||p.event||"Weather alert",
+        description:p.description||"", instruction:p.instruction||null, onset:p.onset||null, expires:p.ends||p.expires||null, sender:p.senderName||"" };
+    });
+    alerts.sort(function(a,b){ return ((rank[a.severity]!=null?rank[a.severity]:5)-(rank[b.severity]!=null?rank[b.severity]:5)) || String(a.onset||"").localeCompare(String(b.onset||"")); });
+    return { alerts: alerts, note: null };
+  }).catch(function(){
+    return { alerts: [], note: "Official alerts are wired through the US National Weather Service; this location is outside its coverage, so check local providers for warnings." };
+  });
+}
+function fetchAirQuality(lat, lon, currentTime, tz){
+  var url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+lat+"&longitude="+lon+
+    "&hourly=us_aqi,pm2_5,pm10,ozone,alder_pollen,birch_pollen,grass_pollen,ragweed_pollen&forecast_days=3&timezone="+encodeURIComponent(tz);
+  return fetchJson(url, null, 1, 8000).then(function(root){
+    var h = root.hourly || {}; var times = strSeries(h.time); var idx = curHourIdx(times, currentTime);
+    function pick(k){ var s = numSeries(h[k]); return idx < s.length ? s[idx] : null; }
+    return { aqi:pick("us_aqi"), pm25:pick("pm2_5"), pm10:pick("pm10"), ozone:pick("ozone"), pollenGrass:pick("grass_pollen"), pollenBirch:pick("birch_pollen"), pollenAlder:pick("alder_pollen"), pollenRagweed:pick("ragweed_pollen") };
+  }).catch(function(){ return null; });
+}
+function fetchModels(lat, lon, tz){
+  var url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
+    "&hourly=temperature_2m,precipitation_probability&models=ecmwf_ifs025,gfs_seamless,icon_seamless&temperature_unit=fahrenheit&forecast_days=4&timezone="+encodeURIComponent(tz);
+  return fetchJson(url, null, 1, 8000).then(function(root){
+    var h = root.hourly || {};
+    return { time:strSeries(h.time), ecmwfTemp:numSeries(h["temperature_2m_ecmwf_ifs025"]), gfsTemp:numSeries(h["temperature_2m_gfs_seamless"]), iconTemp:numSeries(h["temperature_2m_icon_seamless"]) };
+  }).catch(function(){ return null; });
+}
+function fetchWeatherOpenMeteo(lat, lon){
+  var url = "https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
+    "&current=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,is_day"+
+    "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,visibility,cape,snowfall,uv_index,is_day"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,snowfall_sum"+
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10";
+  /* The main forecast gets a solid retry campaign — it is the one read
+     the whole page depends on — but it is deliberately bounded: if this
+     device cannot reach the Open-Meteo host at all, fetchWeather falls
+     back to the National Weather Service instead of retrying a dead
+     host for minutes (see below). */
+  return fetchJson(url, null, 2, 12000).then(function(root){
+    var tz = typeof root.timezone==="string" ? root.timezone : "UTC";
+    var cur = root.current || {}; var h = root.hourly || {}; var d = root.daily || {};
+    var ct = typeof cur.time==="string" ? cur.time : new Date().toISOString();
+    return Promise.all([fetchAirQuality(lat,lon,ct,tz), fetchAlerts(lat,lon), fetchModels(lat,lon,tz)]).then(function(parts){
+      return {
+        timezone: tz, elevation: numOrNull(root.elevation), asOf: new Date().toISOString(),
+        current: { time:ct, temperature:numOrNull(cur.temperature_2m), feelsLike:numOrNull(cur.apparent_temperature), humidity:numOrNull(cur.relative_humidity_2m),
+          dewPoint:numOrNull(cur.dew_point_2m), weatherCode:numOrNull(cur.weather_code), pressure:numOrNull(cur.pressure_msl), windSpeed:numOrNull(cur.wind_speed_10m),
+          windDir:numOrNull(cur.wind_direction_10m), windGusts:numOrNull(cur.wind_gusts_10m), precipitation:numOrNull(cur.precipitation), cloudCover:numOrNull(cur.cloud_cover), isDay:numOrNull(cur.is_day) },
+        hourly: { time:strSeries(h.time), temperature:numSeries(h.temperature_2m), feelsLike:numSeries(h.apparent_temperature), precipProb:numSeries(h.precipitation_probability),
+          precip:numSeries(h.precipitation), weatherCode:numSeries(h.weather_code), windSpeed:numSeries(h.wind_speed_10m), windGusts:numSeries(h.wind_gusts_10m),
+          windDir:numSeries(h.wind_direction_10m), visibility:numSeries(h.visibility), cape:numSeries(h.cape), snowfall:numSeries(h.snowfall), uvIndex:numSeries(h.uv_index), isDay:numSeries(h.is_day) },
+        daily: { date:strSeries(d.time), weatherCode:numSeries(d.weather_code), tempMax:numSeries(d.temperature_2m_max), tempMin:numSeries(d.temperature_2m_min),
+          feelsMax:numSeries(d.apparent_temperature_max), feelsMin:numSeries(d.apparent_temperature_min), sunrise:strSeries(d.sunrise), sunset:strSeries(d.sunset),
+          uvMax:numSeries(d.uv_index_max), precipSum:numSeries(d.precipitation_sum), precipProbMax:numSeries(d.precipitation_probability_max),
+          windMax:numSeries(d.wind_speed_10m_max), gustMax:numSeries(d.wind_gusts_10m_max), snowfallSum:numSeries(d.snowfall_sum) },
+        airQuality: parts[0], alerts: parts[1].alerts, alertsNote: parts[1].note, models: parts[2]
+      };
+    });
+  });
+}
+/* The main forecast: Open-Meteo first (full-featured feed). If every
+   direct attempt to that host fails on this device — some phone
+   browsers and in-app webviews lose cross-site reads to particular
+   hosts even when the feed itself is healthy — US locations fall back
+   to the US National Weather Service (api.weather.gov), a different
+   provider on a different host: the same service the alerts already
+   use, so it is the path most likely to still be open. */
+function fetchWeather(lat, lon){
+  return fetchWeatherOpenMeteo(lat, lon).catch(function(){
+    return fetchWeatherNWS(lat, lon);
+  });
+}
+/* ── Fallback forecast: US National Weather Service ───────────────────
+   Maps the NWS points → hourly/daily forecast + latest station
+   observation onto the same shape the page renders. The NWS feed has
+   no UV, CAPE, visibility-forecast, precipitation-amount or
+   feels-like fields, so those stay null and read as "—" rather than
+   being guessed; air quality and the model face-off still try
+   Open-Meteo on their own and degrade separately. Outside NWS
+   coverage the points lookup fails and the error stands. */
+function nwsCode(text){
+  var t=(text||"").toLowerCase();
+  if(/thunder|tstm/.test(t)) return 95;
+  if(/blizzard/.test(t)) return 75;
+  if(/freezing rain|freezing drizzle|\bice\b/.test(t)) return 66;
+  if(/snow|flurr/.test(t)) return 73;
+  if(/sleet/.test(t)) return 77;
+  if(/drizzle/.test(t)) return 53;
+  if(/shower/.test(t)) return 81;
+  if(/heavy rain/.test(t)) return 65;
+  if(/light rain/.test(t)) return 61;
+  if(/rain/.test(t)) return 63;
+  if(/fog|haze|smoke/.test(t)) return 45;
+  if(/partly/.test(t)) return 2;
+  if(/mostly cloudy|cloudy|overcast/.test(t)) return 3;
+  if(/mostly sunny|mostly clear/.test(t)) return 1;
+  if(/sunny|clear|fair/.test(t)) return 0;
+  return 2;
+}
+function nwsWindMph(s){ /* "7 mph", "5 to 10 mph", "Calm" */
+  if(typeof s!=="string") return null;
+  var nums=s.match(/\d+(?:\.\d+)?/g);
+  if(!nums) return /calm/i.test(s)?0:null;
+  return Number(nums[nums.length-1]);
+}
+var NWS_DIRS={N:0,NNE:23,NE:45,ENE:68,E:90,ESE:113,SE:135,SSE:158,S:180,SSW:203,SW:225,WSW:248,W:270,WNW:293,NW:315,NNW:338};
+function nwsDirDeg(d){ return (d!=null && NWS_DIRS[d]!=null) ? NWS_DIRS[d] : null; }
+function nwsVal(o){ return (o && typeof o.value==="number" && isFinite(o.value)) ? o.value : null; }
+function nwsCtoF(c){ return c==null?null:c*9/5+32; }
+function fetchWeatherNWS(lat, lon){
+  var HDR={ "Accept":"application/geo+json" };
+  function gj(u){ return fetchJson(u, HDR, 1, 10000, true); }
+  return gj("https://api.weather.gov/points/"+lat.toFixed(4)+","+lon.toFixed(4)).then(function(pt){
+    var props=(pt&&pt.properties)||{};
+    if(!props.forecastHourly || !props.forecast) throw new Error("The National Weather Service has no forecast grid for this point");
+    var tz=typeof props.timeZone==="string"?props.timeZone:"UTC";
+    var stationsUrl=typeof props.observationStations==="string"?props.observationStations:null;
+    var obsP = stationsUrl ? gj(stationsUrl).then(function(sl){
+        var f=(sl&&sl.features&&sl.features[0])||null;
+        var sid=f&&f.properties&&f.properties.stationIdentifier;
+        if(!sid) return null;
+        return gj("https://api.weather.gov/stations/"+sid+"/observations/latest").catch(function(){ return null; });
+      }).catch(function(){ return null; }) : Promise.resolve(null);
+    return Promise.all([ gj(props.forecastHourly), gj(props.forecast), obsP ]).then(function(res){
+      var periods=(res[0]&&res[0].properties&&res[0].properties.periods)||[];
+      var dPeriods=(res[1]&&res[1].properties&&res[1].properties.periods)||[];
+      var obs=(res[2]&&res[2].properties)||null;
+      if(!periods.length) throw new Error("The National Weather Service returned no forecast for this point");
+      var hr={ time:[], temperature:[], feelsLike:[], precipProb:[], precip:[], weatherCode:[], windSpeed:[], windGusts:[], windDir:[], visibility:[], cape:[], snowfall:[], uvIndex:[], isDay:[] };
+      periods.forEach(function(per){
+        hr.time.push(typeof per.startTime==="string"?per.startTime:"");
+        hr.temperature.push(typeof per.temperature==="number"?per.temperature:null);
+        hr.feelsLike.push(null);
+        hr.precipProb.push(nwsVal(per.probabilityOfPrecipitation));
+        hr.precip.push(null);
+        hr.weatherCode.push(nwsCode(per.shortForecast));
+        hr.windSpeed.push(nwsWindMph(per.windSpeed));
+        hr.windGusts.push(null);
+        hr.windDir.push(nwsDirDeg(per.windDirection));
+        hr.visibility.push(null); hr.cape.push(null); hr.snowfall.push(null); hr.uvIndex.push(null);
+        hr.isDay.push(per.isDaytime?1:0);
+      });
+      var days=[], byDate={};
+      dPeriods.forEach(function(per){
+        var date=(typeof per.startTime==="string"?per.startTime.slice(0,10):"");
+        if(!date) return;
+        var d=byDate[date];
+        if(!d){ d={ date:date, weatherCode:null, tempMax:null, tempMin:null, precipProbMax:null, windMax:null }; byDate[date]=d; days.push(d); }
+        var t=typeof per.temperature==="number"?per.temperature:null;
+        if(per.isDaytime){ if(t!=null&&(d.tempMax==null||t>d.tempMax)) d.tempMax=t; }
+        else if(t!=null&&(d.tempMin==null||t<d.tempMin)) d.tempMin=t;
+        if(d.weatherCode==null) d.weatherCode=nwsCode(per.shortForecast);
+        var pp=nwsVal(per.probabilityOfPrecipitation); if(pp!=null&&(d.precipProbMax==null||pp>d.precipProbMax)) d.precipProbMax=pp;
+        var ws=nwsWindMph(per.windSpeed); if(ws!=null&&(d.windMax==null||ws>d.windMax)) d.windMax=ws;
+      });
+      var dy={ date:[], weatherCode:[], tempMax:[], tempMin:[], feelsMax:[], feelsMin:[], sunrise:[], sunset:[], uvMax:[], precipSum:[], precipProbMax:[], windMax:[], gustMax:[], snowfallSum:[] };
+      days.forEach(function(d){
+        dy.date.push(d.date); dy.weatherCode.push(d.weatherCode); dy.tempMax.push(d.tempMax); dy.tempMin.push(d.tempMin);
+        dy.feelsMax.push(null); dy.feelsMin.push(null); dy.sunrise.push(""); dy.sunset.push(""); dy.uvMax.push(null);
+        dy.precipSum.push(null); dy.precipProbMax.push(d.precipProbMax); dy.windMax.push(d.windMax); dy.gustMax.push(null); dy.snowfallSum.push(null);
+      });
+      var p0=periods[0];
+      var cur={ time:(typeof p0.startTime==="string"?p0.startTime:new Date().toISOString()),
+        temperature:null, feelsLike:null, humidity:null, dewPoint:null, weatherCode:null, pressure:null,
+        windSpeed:null, windDir:null, windGusts:null, precipitation:null, cloudCover:null, isDay:p0.isDaytime?1:0 };
+      if(obs){
+        cur.temperature=nwsCtoF(nwsVal(obs.temperature));
+        cur.dewPoint=nwsCtoF(nwsVal(obs.dewpoint));
+        cur.humidity=nwsVal(obs.relativeHumidity);
+        var bp=nwsVal(obs.barometricPressure); cur.pressure=bp==null?null:bp/100;
+        var ws2=nwsVal(obs.windSpeed); cur.windSpeed=ws2==null?null:ws2*0.621371;
+        var wg=nwsVal(obs.windGust); cur.windGusts=wg==null?null:wg*0.621371;
+        cur.windDir=nwsVal(obs.windDirection);
+        var pr=nwsVal(obs.precipitationLastHour); cur.precipitation=pr==null?null:pr/25.4;
+        cur.weatherCode=nwsCode(obs.textDescription);
+        var wc=nwsCtoF(nwsVal(obs.windChill)), hi=nwsCtoF(nwsVal(obs.heatIndex));
+        cur.feelsLike=hi!=null?hi:(wc!=null?wc:cur.temperature);
+        var visM=nwsVal(obs.visibility); if(visM!=null) hr.visibility[0]=visM;
+      }
+      if(cur.temperature==null){
+        cur.temperature=typeof p0.temperature==="number"?p0.temperature:null;
+        cur.weatherCode=nwsCode(p0.shortForecast);
+        cur.humidity=nwsVal(p0.relativeHumidity);
+        cur.dewPoint=nwsCtoF(nwsVal(p0.dewpoint));
+        cur.windSpeed=nwsWindMph(p0.windSpeed);
+        cur.windDir=nwsDirDeg(p0.windDirection);
+        cur.feelsLike=cur.temperature;
+      }
+      return Promise.all([fetchAirQuality(lat,lon,cur.time,tz), fetchAlerts(lat,lon), fetchModels(lat,lon,tz)]).then(function(parts){
+        return { timezone:tz, elevation:null, asOf:new Date().toISOString(), source:"nws",
+          current:cur, hourly:hr, daily:dy,
+          airQuality:parts[0], alerts:parts[1].alerts, alertsNote:parts[1].note, models:parts[2] };
+      });
+    });
+  });
+}
+function getWeatherCached(lat, lon, force){
+  var key = lat.toFixed(2)+","+lon.toFixed(2);
+  var hit = weatherCache[key];
+  if (hit && !force && Date.now()-hit.at < CACHE_MS) return Promise.resolve(hit.data);
+  return fetchWeather(lat, lon).then(function(w){ weatherCache[key] = { at: Date.now(), data: w }; return w; });
+}
+var GLOBE_LATS=[-60,-45,-30,-15,0,15,30,45,60,75], GLOBE_LONS=[];
+for (var gl=-180; gl<180; gl+=20) GLOBE_LONS.push(gl);
+function fetchGlobe(){
+  var lats=[], lons=[];
+  GLOBE_LATS.forEach(function(la){ GLOBE_LONS.forEach(function(lo){ lats.push(la); lons.push(lo); }); });
+  var url = "https://api.open-meteo.com/v1/forecast?latitude="+lats.join(",")+"&longitude="+lons.join(",")+
+    "&current=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,cloud_cover,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&forecast_days=1";
+  return fetchJson(url).then(function(raw){
+    var list = Array.isArray(raw) ? raw : [raw];
+    var pts = list.map(function(item, i){
+      var c = (item && item.current) || {};
+      return { lat: typeof item.latitude==="number"?item.latitude:GLOBE_LATS[Math.floor(i/GLOBE_LONS.length)]||0,
+        lon: typeof item.longitude==="number"?item.longitude:GLOBE_LONS[i%GLOBE_LONS.length]||0,
+        temp:numOrNull(c.temperature_2m), windSpeed:numOrNull(c.wind_speed_10m), windDir:numOrNull(c.wind_direction_10m),
+        precip:numOrNull(c.precipitation), cloud:numOrNull(c.cloud_cover), code:numOrNull(c.weather_code) };
+    });
+    return { points: pts, asOf: new Date().toISOString() };
+  });
+}
+function fetchRadar(){
+  return fetchJson("https://api.rainviewer.com/public/weather-maps.json").then(function(root){
+    var radar = root.radar || {};
+    function parse(v){ return (Array.isArray(v)?v:[]).map(function(f){ return { time: typeof f.time==="number"?f.time:0, path: typeof f.path==="string"?f.path:"" }; }).filter(function(f){ return f.path.length>0; }); }
+    return { host: typeof root.host==="string"?root.host:"https://tilecache.rainviewer.com", past: parse(radar.past), nowcast: parse(radar.nowcast) };
+  }).catch(function(){ return { host:null, past:[], nowcast:[] }; });
+}
+/* NHC tropical feed */
+var CLASS_LABELS={HU:"Hurricane",TS:"Tropical Storm",TD:"Tropical Depression",STS:"Subtropical Storm",STD:"Subtropical Depression",TY:"Typhoon",STY:"Super Typhoon",TC:"Tropical Cyclone",PTC:"Potential Tropical Cyclone",PTS:"Post-Tropical Cyclone",LO:"Low",DB:"Disturbance",WV:"Tropical Wave"};
+function basinFor(id){ var p=id.slice(0,2).toLowerCase(); if(p==="al") return "Atlantic"; if(p==="ep") return "East Pacific"; if(p==="cp") return "Central Pacific"; return "Tropical basin"; }
+function categoryFor(cls, mph){ if(cls!=="HU"||mph==null) return null; if(mph>=157) return "Category 5"; if(mph>=130) return "Category 4"; if(mph>=111) return "Category 3"; if(mph>=96) return "Category 2"; return "Category 1"; }
+function parseTrack(html){
+  var text = html.replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ");
+  var gm = text.match(/MAX SUSTAINED WINDS\s+(\d+)\s+KT WITH GUSTS TO\s+(\d+)\s+KT/);
+  var gustKt = gm ? Number(gm[2]) : null;
+  var track=[]; var re=/(FORECAST|OUTLOOK)\s+VALID\s+(\d{2})\/(\d{4})Z\s+(\d+(?:\.\d+)?)([NS])\s+(\d+(?:\.\d+)?)([EW])\s+MAX WIND\s+(\d+)\s+KT/g; var m;
+  while((m=re.exec(text))!==null){
+    var kt=Number(m[8]);
+    track.push({ validLabel:(m[1]==="OUTLOOK"?"Outlook ":"")+"Day "+m[2]+" · "+m[3].slice(0,2)+":"+m[3].slice(2)+" UTC",
+      lat:Number(m[4])*(m[5]==="S"?-1:1), lon:Number(m[6])*(m[7]==="W"?-1:1), maxWindKt:isFinite(kt)?kt:null, maxWindMph:isFinite(kt)?Math.round(kt*1.15078):null });
+  }
+  return { track:track, gustKt:gustKt };
+}
+function fetchTropical(){
+  /* Single attempt: the NHC feed sends no CORS headers, so in browsers that
+     block the direct read, extra retries only multiply console errors
+     without ever getting through. One clean try, then the honest card. */
+  return fetchJson("https://www.nhc.noaa.gov/CurrentStorms.json", null, 0).then(function(root){
+    var list = Array.isArray(root.activeStorms) ? root.activeStorms : [];
+    var jobs = list.map(function(s){
+      function str(k){ return typeof s[k]==="string"?s[k]:""; }
+      function num(k){ var v=s[k]; if(typeof v==="number"&&isFinite(v)) return v; if(typeof v==="string"&&v.trim()!==""&&isFinite(Number(v))) return Number(v); return null; }
+      var lat=num("latitudeNumeric"), lon=num("longitudeNumeric");
+      if(lat==null||lon==null) return Promise.resolve(null);
+      var cls=str("classification")||"TC"; var intKt=num("intensity"); var mph=intKt!=null?Math.round(intKt*1.15078):null;
+      var mvDir=num("movementDir"), mvSpd=num("movementSpeed");
+      function sub(k){ var o=s[k]; return (o&&typeof o.url==="string")?o.url:null; }
+      var fcstUrl=sub("forecastAdvisory");
+      var base={ id:str("id"), name:str("name")||"Unnamed storm", basin:basinFor(str("id")), classification:cls,
+        classificationLabel:CLASS_LABELS[cls]||cls, category:categoryFor(cls,mph), intensityKt:intKt, windMph:mph,
+        gustKt:null, gustMph:null, pressureMb:num("pressure"), lat:lat, lon:lon, movementDir:mvDir,
+        movementDirLabel: mvDir!=null ? DIRS[Math.round(mvDir/22.5)%16]||"—" : "—",
+        movementSpeedKt:mvSpd, movementSpeedMph: mvSpd!=null?Math.round(mvSpd*1.15078):null,
+        lastUpdate: typeof s.lastUpdate==="string"?s.lastUpdate:null,
+        advisoryUrl:sub("publicAdvisory"), graphicsUrl:sub("forecastGraphics"), discussionUrl:sub("forecastDiscussion"), track:[] };
+      var head={ validLabel:"Now", lat:lat, lon:lon, maxWindKt:intKt, maxWindMph:mph };
+      if(!fcstUrl){ base.track=[head]; return Promise.resolve(base); }
+      return fetchText(fcstUrl).then(function(html){ var p=parseTrack(html); base.track=[head].concat(p.track); base.gustKt=p.gustKt; base.gustMph=p.gustKt!=null?Math.round(p.gustKt*1.15078):null; return base; })
+        .catch(function(){ base.track=[head]; return base; });
+    });
+    return Promise.all(jobs).then(function(storms){
+      storms = storms.filter(Boolean);
+      storms.sort(function(a,b){ return (b.windMph||0)-(a.windMph||0); });
+      return { ok:true, error:null, asOf:new Date().toISOString(), storms:storms };
+    });
+  }).catch(function(err){ return { ok:false, error:(err&&err.message)||"National Hurricane Center feed unreachable", asOf:null, storms:[] }; });
+}
+function searchLocations(q){
+  return fetchJson("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=8&language=en&format=json").then(function(root){
+    var list = Array.isArray(root.results)?root.results:[];
+    return list.map(function(r){ return { name:r.name||"", region:r.admin1||"", country:r.country||"", lat:typeof r.latitude==="number"?r.latitude:0, lon:typeof r.longitude==="number"?r.longitude:0, timezone:r.timezone||"auto" }; }).filter(function(r){ return r.name.length>0; });
+  }).catch(function(){ return []; });
+}
+
+/* ── Derived (next 48h) ─────────────────────────────────────────────── */
+function derive(w){
+  var curHour = w.current.time.slice(0,13);
+  var start = w.hourly.time.findIndex(function(t){ return t.slice(0,13)>=curHour; });
+  if(start<0) start=0;
+  var idx=[]; for(var i=start;i<Math.min(w.hourly.time.length,start+48);i++) idx.push(i);
+  function pick(arr){ return idx.map(function(j){ return arr[j]!=null?arr[j]:null; }); }
+  function maxOf(a){ return a.reduce(function(m,v){ return (v!=null&&(m==null||v>m))?v:m; },null); }
+  function minOf(a){ return a.reduce(function(m,v){ return (v!=null&&(m==null||v<m))?v:m; },null); }
+  function sumOf(a){ return a.reduce(function(s,v){ return s+(v||0); },0); }
+  var temps=pick(w.hourly.temperature), codes=pick(w.hourly.weatherCode);
+  var snowSeries=pick(w.hourly.snowfall);
+  var vis24 = idx.slice(0,24).map(function(j){ return w.hourly.visibility[j]!=null?w.hourly.visibility[j]:null; });
+  return { start:start, hours: idx.map(function(j){ return w.hourly.time[j]||""; }), temps:temps, feels:pick(w.hourly.feelsLike), prob:pick(w.hourly.precipProb), codes:codes,
+    maxTemp:maxOf(temps), minTemp:minOf(temps), thunderHours:codes.filter(isThunder).length, snowHours:codes.filter(isSnow).length, freezingHours:codes.filter(isFreezing).length,
+    maxCape:maxOf(pick(w.hourly.cape)), maxGust:maxOf(pick(w.hourly.windGusts)), maxPrecipHour:maxOf(pick(w.hourly.precip)), totalPrecip:sumOf(pick(w.hourly.precip)),
+    /* Whether the feed actually carried snowfall values in the window.
+       sumOf treats missing as 0, so without this flag a missing feed and
+       a genuinely snow-free stretch are indistinguishable — the tile
+       showed "—" (missing) while its caption said no snow (zero). */
+    snowData:snowSeries.some(function(v){ return v!=null; }),
+    totalSnow:sumOf(snowSeries), belowFreezing:temps.filter(function(t){ return t!=null&&t<=32; }).length, minVis24:minOf(vis24),
+    maxFeels:maxOf(pick(w.hourly.feelsLike)), curVis:w.hourly.visibility[start]!=null?w.hourly.visibility[start]:null, curUv:w.hourly.uvIndex[start]!=null?w.hourly.uvIndex[start]:null };
+}
+
+/* ── SVG charts ─────────────────────────────────────────────────────── */
+function linePoints(data, x0, x1, y0, y1, min, max){
+  var pts=[];
+  data.forEach(function(v,i){ if(v==null) return; var x=x0+(x1-x0)*(data.length<=1?0:i/(data.length-1)); var y=y1-((v-min)/(max-min))*(y1-y0); pts.push(x.toFixed(1)+","+y.toFixed(1)); });
+  return pts.join(" ");
+}
+function hourlyChartSVG(hours, temps, probs){
+  var W=720,H=230,ML=34,MR=10,MT=14,MB=26, iw=W-ML-MR, ih=H-MT-MB;
+  var vals=temps.filter(function(v){ return v!=null; });
+  if(!vals.length) return "";
+  var min=Math.min.apply(null,vals)-4, max=Math.max.apply(null,vals)+4;
+  var bw=iw/hours.length;
+  var bars="", labels="";
+  probs.forEach(function(p,i){ if(p==null) return; var bh=(p/100)*ih; bars+='<rect x="'+(ML+i*bw+1).toFixed(1)+'" y="'+(MT+ih-bh).toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="#3b82f6" fill-opacity="0.4"/>'; });
+  hours.forEach(function(t,i){ if(i%6!==0) return; var x=ML+i*bw+bw/2; labels+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="var(--dim)">'+esc(hourAxisLabel(t))+'</text>'; });
+  var ticks=""; [0,0.5,1].forEach(function(k){ var v=min+(max-min)*k; var y=MT+ih-ih*k; ticks+='<line x1="'+ML+'" y1="'+y+'" x2="'+(W-MR)+'" y2="'+y+'" stroke="var(--border)" stroke-dasharray="3 3"/><text x="'+(ML-5)+'" y="'+(y+3)+'" text-anchor="end" font-size="10" fill="var(--dim)">'+Math.round(tempVal(v))+'°</text>'; });
+  var line=linePoints(temps.map(function(v){ return v==null?null:tempVal(v); }), ML, ML+iw, MT, MT+ih, min, max);
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Hourly temperature and precipitation chance chart">'+ticks+bars+'<polyline points="'+line+'" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linejoin="round"/>'+labels+'</svg>';
+}
+function modelChartSVG(rows){
+  var W=720,H=250,ML=34,MR=10,MT=14,MB=26, iw=W-ML-MR, ih=H-MT-MB;
+  var all=[]; rows.forEach(function(r){ [r.e,r.g,r.i].forEach(function(v){ if(v!=null) all.push(v); }); });
+  if(!all.length) return "";
+  var min=Math.min.apply(null,all)-4, max=Math.max.apply(null,all)+4;
+  var ticks=""; [0,0.5,1].forEach(function(k){ var v=min+(max-min)*k; var y=MT+ih-ih*k; ticks+='<line x1="'+ML+'" y1="'+y+'" x2="'+(W-MR)+'" y2="'+y+'" stroke="var(--border)" stroke-dasharray="3 3"/><text x="'+(ML-5)+'" y="'+(y+3)+'" text-anchor="end" font-size="10" fill="var(--dim)">'+Math.round(v)+'°</text>'; });
+  var labels=""; rows.forEach(function(r,i){ if(i%12!==0) return; var x=ML+(rows.length<=1?0:iw*i/(rows.length-1)); labels+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="var(--dim)">'+esc(r.label)+'</text>'; });
+  function series(key,color){ return '<polyline points="'+linePoints(rows.map(function(r){ return r[key]; }),ML,ML+iw,MT,MT+ih,min,max)+'" fill="none" stroke="'+color+'" stroke-width="2.2" stroke-linejoin="round"/>'; }
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="ECMWF, GFS and ICON model temperature comparison chart">'+ticks+series("e","#38bdf8")+series("g","#f5a623")+series("i","#4ade80")+labels+'</svg>'+
+    '<p style="margin:6px 4px 0;font-size:12px"><span style="color:#38bdf8;font-weight:800">— ECMWF</span>&nbsp;&nbsp;<span style="color:#f5a623;font-weight:800">— GFS</span>&nbsp;&nbsp;<span style="color:#4ade80;font-weight:800">— ICON</span></p>';
+}
+function trackChartSVG(storm){
+  var pts=storm.track; if(!pts||pts.length<2) return "";
+  var lats=pts.map(function(t){ return t.lat; }), lons=pts.map(function(t){ return t.lon; });
+  var pad=2.5, minLat=Math.min.apply(null,lats)-pad, maxLat=Math.max.apply(null,lats)+pad, minLon=Math.min.apply(null,lons)-pad, maxLon=Math.max.apply(null,lons)+pad;
+  var W=340,H=210,ML=34,MR=10,MT=10,MB=24;
+  function X(lon){ return ML+((lon-minLon)/Math.max(1,maxLon-minLon))*(W-ML-MR); }
+  function Y(lat){ return MT+(1-(lat-minLat)/Math.max(1,maxLat-minLat))*(H-MT-MB); }
+  var color=tropicalColor(storm.category, storm.classification);
+  var s="";
+  if(typeof LAND_RINGS!=="undefined"){
+    LAND_RINGS.forEach(function(ring){
+      var d="", pen=false;
+      for(var i=0;i<ring.length;i+=2){ var lo2=ring[i], la2=ring[i+1]; if(lo2<minLon-1||lo2>maxLon+1||la2<minLat-1||la2>maxLat+1){ pen=false; continue; } d+=(pen?"L":"M")+X(lo2).toFixed(1)+" "+Y(la2).toFixed(1); pen=true; }
+      if(d) s+='<path d="'+d+'" fill="rgba(110,150,120,0.20)" stroke="rgba(110,150,120,0.5)" stroke-width="0.6"/>';
+    });
+  }
+  for(var g=Math.ceil(minLon/5)*5; g<=maxLon; g+=5){ s+='<line x1="'+X(g)+'" y1="'+MT+'" x2="'+X(g)+'" y2="'+(H-MB)+'" stroke="var(--border)" stroke-dasharray="2 3"/><text x="'+X(g)+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="var(--dim)">'+Math.abs(g)+'°'+(g>=0?"E":"W")+'</text>'; }
+  for(var g2=Math.ceil(minLat/5)*5; g2<=maxLat; g2+=5){ s+='<line x1="'+ML+'" y1="'+Y(g2)+'" x2="'+(W-MR)+'" y2="'+Y(g2)+'" stroke="var(--border)" stroke-dasharray="2 3"/><text x="'+(ML-4)+'" y="'+(Y(g2)+3)+'" text-anchor="end" font-size="9" fill="var(--dim)">'+Math.abs(g2)+'°'+(g2>=0?"N":"S")+'</text>'; }
+  s+='<polyline points="'+pts.map(function(t){ return X(t.lon).toFixed(1)+","+Y(t.lat).toFixed(1); }).join(" ")+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-dasharray="6 3"/>';
+  pts.forEach(function(t,i){ s+='<circle cx="'+X(t.lon)+'" cy="'+Y(t.lat)+'" r="'+(i===0?5:3.5)+'" fill="'+(i===0?color:"var(--surface)")+'" stroke="'+color+'" stroke-width="2"/>'; if(i===0||i===pts.length-1){ s+='<text x="'+(X(t.lon)+8)+'" y="'+(Y(t.lat)-6)+'" font-size="10" font-weight="700" fill="var(--text)">'+(i===0?"Now · ":" +5d · ")+(t.maxWindMph!=null?t.maxWindMph+" mph":"—")+'</text>'; } });
+  var list=pts.map(function(t){ return '<p><span>'+esc(t.validLabel)+'</span><span>'+esc(formatLatLon(t.lat,t.lon))+'</span><span style="color:var(--text)">'+(t.maxWindMph!=null?t.maxWindMph+" mph":"—")+'</span></p>'; }).join("");
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Forecast track chart for '+esc(storm.name)+'">'+s+'</svg><div class="track-list">'+list+'</div>';
+}
+
+/* ── Globe (canvas, orthographic) ───────────────────────────────────── */
+var LAYER_META={
+  temp:{label:"Temperature",min:"-20°F",max:"105°F",gradient:"linear-gradient(90deg,#9333ea,#3b82f6,#38bdf8,#4ade80,#facc15,#f97316,#ef4444)"},
+  wind:{label:"Wind speed",min:"0 mph",max:"60+ mph",gradient:"linear-gradient(90deg,#164e63,#0e7490,#22d3ee,#a5f3fc)"},
+  precip:{label:"Precipitation",min:"Dry",max:"1+ in/hr",gradient:"linear-gradient(90deg,#1e3a2f,#166534,#22c55e,#38bdf8,#818cf8)"},
+  cloud:{label:"Cloud cover",min:"0%",max:"100%",gradient:"linear-gradient(90deg,#1e293b,#475569,#94a3b8,#f1f5f9)"}
+};
+/* Land outlines (Natural Earth 110m, simplified): flat [lon,lat,...] rings,
+   filled on the globe and behind hurricane tracks so the geography reads. */
+var LAND_VEC=null;
+function buildLandVec(){
+  LAND_VEC=LAND_RINGS.map(function(ring){
+    var pts=[], n=ring.length/2;
+    for(var i=0;i<n;i++){
+      var j=(i+1)%n;
+      var lo1=ring[i*2], la1=ring[i*2+1], lo2=ring[j*2], la2=ring[j*2+1];
+      var dlo=((lo2-lo1+540)%360)-180;
+      var steps=Math.max(1,Math.ceil(Math.max(Math.abs(la2-la1),Math.abs(dlo))/4));
+      for(var s=0;s<steps;s++){
+        var t=s/steps, la=(la1+(la2-la1)*t)*Math.PI/180, lo=(lo1+dlo*t)*Math.PI/180;
+        var c=Math.cos(la);
+        pts.push([c*Math.cos(lo), c*Math.sin(lo), Math.sin(la)]);
+      }
+    }
+    return pts;
+  });
+}
+var LAND_RINGS=[[-59.6,-80.0,-60.2,-81.0,-64.5,-80.9,-66.3,-80.3,-61.9,-80.4,-60.6,-79.6,-59.6,-80.0],[-159.2,-79.5,-161.1,-79.6,-163.7,-78.6,-163.1,-78.2,-161.2,-78.4,-159.2,-79.5],[-45.1,-78.0,-43.9,-78.5,-43.3,-80.0,-50.5,-81.0,-54.2,-80.6,-54.0,-80.2,-51.0,-79.6,-48.7,-78.0,-45.1,-78.0],[-121.2,-73.5,-118.7,-73.5,-120.2,-74.1,-122.6,-73.7,-122.4,-73.3,-121.2,-73.5],[-125.6,-73.5,-124.0,-73.9,-127.3,-73.5,-125.6,-73.5],[-99.0,-71.9,-96.8,-72.0,-96.2,-72.5,-100.8,-72.5,-102.3,-71.9,-99.0,-71.9],[-68.5,-71.0,-68.8,-72.2,-71.1,-72.5,-72.4,-72.5,-71.9,-72.1,-74.2,-72.4,-75.0,-71.7,-72.1,-71.2,-71.7,-69.5,-70.2,-68.9,-68.5,-71.0],[-58.6,-64.2,-62.0,-64.8,-62.6,-65.5,-62.1,-66.2,-63.8,-66.5,-65.7,-68.0,-63.2,-69.2,-61.8,-70.7,-60.8,-73.7,-64.3,-75.3,-70.6,-76.6,-77.2,-76.7,-73.7,-77.9,-77.9,-78.4,-78.0,-79.2,-75.4,-80.3,-59.7,-82.4,-58.2,-83.2,-49.8,-81.7,-42.8,-82.1,-40.8,-81.4,-28.6,-80.3,-29.7,-79.3,-35.6,-79.5,-35.8,-78.3,-28.9,-76.7,-22.5,-76.1,-17.5,-75.1,-15.7,-74.5,-15.4,-74.1,-16.5,-73.9,-15.4,-73.2,-12.3,-72.4,-10.3,-71.3,-7.4,-71.7,-6.9,-70.9,-4.3,-71.5,-0.7,-71.2,-0.2,-71.6,7.7,-69.9,9.5,-70.0,10.8,-70.8,13.4,-70.0,15.1,-70.4,19.3,-69.9,21.4,-70.1,22.6,-70.7,27.1,-70.5,32.0,-69.7,33.9,-68.5,38.6,-69.8,42.0,-68.6,47.4,-67.7,54.5,-65.8,56.4,-66.0,58.7,-67.3,61.4,-68.0,64.0,-67.4,68.9,-67.9,69.7,-69.2,69.6,-69.7,67.8,-70.3,68.0,-70.7,69.1,-70.7,68.0,-71.8,69.9,-72.3,71.0,-72.1,73.9,-69.9,77.6,-69.5,79.1,-68.3,82.8,-67.2,86.8,-67.2,88.0,-66.2,89.7,-67.2,95.8,-67.4,99.7,-67.2,102.8,-65.6,106.2,-66.9,110.2,-66.7,113.6,-65.9,115.6,-66.7,119.8,-67.3,123.2,-66.5,128.8,-66.8,134.8,-66.2,135.1,-65.3,136.6,-66.8,137.5,-67.0,145.5,-66.9,146.7,-67.9,148.8,-68.4,152.5,-68.9,154.3,-68.6,159.2,-69.6,161.6,-70.6,167.3,-70.8,171.2,-71.7,169.3,-73.7,166.1,-74.4,163.6,-76.2,163.5,-77.1,164.7,-78.2,166.6,-78.3,167.0,-78.8,161.8,-79.2,159.8,-81.0,163.7,-82.4,168.9,-83.3,169.4,-83.8,180,-84.7,180,-90,-180,-90,-180,-84.7,-179.1,-84.1,-174.4,-84.5,-169.9,-83.9,-161.9,-85.1,-148.5,-85.6,-143.1,-85.0,-142.9,-84.6,-150.1,-84.3,-153.6,-83.7,-152.7,-82.5,-152.9,-82.0,-156.8,-81.1,-150.7,-81.3,-146.4,-80.3,-149.5,-79.4,-155.3,-79.1,-158.1,-78.0,-158.4,-76.9,-157.0,-77.3,-151.3,-77.4,-146.1,-76.5,-146.5,-75.7,-146.2,-75.4,-144.3,-75.5,-135.2,-74.3,-121.1,-74.5,-113.9,-73.7,-112.3,-74.7,-111.3,-74.4,-107.6,-75.2,-100.7,-75.3,-100.1,-74.9,-101.2,-74.2,-102.5,-74.1,-103.7,-72.6,-100.3,-72.8,-96.3,-73.6,-90.1,-73.3,-89.2,-72.6,-88.4,-73.0,-81.5,-73.8,-80.3,-73.1,-74.9,-73.9,-67.4,-72.5,-67.2,-71.6,-68.5,-69.7,-67.4,-68.2,-67.7,-67.3,-63.0,-64.6,-58.6,-63.4,-57.2,-63.5,-58.6,-64.2],[-67.8,-53.9,-65.0,-54.7,-65.5,-55.2,-67.0,-54.9,-68.2,-55.6,-69.2,-55.5,-72.3,-54.5,-74.7,-52.8,-71.1,-54.1,-70.3,-52.9,-69.3,-52.5,-68.6,-52.6,-67.8,-53.9],[-58.5,-51.1,-57.8,-51.5,-58.0,-51.9,-59.4,-52.2,-59.9,-51.9,-60.7,-52.3,-61.2,-51.9,-58.5,-51.1],[70.3,-49.7,68.8,-49.8,68.9,-48.6,70.5,-49.1,70.3,-49.7],[145.4,-40.8,146.4,-41.1,148.3,-40.9,147.9,-43.2,147.6,-42.9,146.9,-43.6,146.1,-43.5,144.7,-41.2,144.7,-40.7,145.4,-40.8],[173.0,-40.9,173.2,-41.3,174.0,-40.9,174.2,-41.8,172.7,-43.4,173.1,-43.9,171.4,-44.2,170.6,-45.9,169.3,-46.6,166.7,-46.2,167.1,-45.1,170.5,-43.0,172.1,-41.0,172.8,-40.5,173.0,-40.9],[174.6,-36.2,175.3,-37.2,175.4,-36.5,176.0,-37.6,176.8,-37.9,178.5,-37.7,178.0,-39.2,177.2,-39.1,176.0,-41.3,175.2,-41.7,174.7,-41.3,175.2,-40.5,174.9,-39.9,173.8,-39.5,174.6,-38.8,174.7,-37.4,172.6,-34.5,174.3,-35.3,174.6,-36.2],[167.1,-22.2,166.7,-22.4,165.5,-21.7,164.0,-20.1,167.1,-22.2],[178.4,-17.3,178.6,-18.1,177.4,-18.2,177.7,-17.4,178.4,-17.3],[179.4,-16.8,178.7,-17.0,178.6,-16.6,180,-16.1,180,-16.6,179.4,-16.8],[167.8,-16.5,167.5,-16.6,167.2,-15.9,167.8,-16.5],[167.1,-14.9,167.3,-15.7,166.8,-15.7,166.6,-14.6,167.1,-14.9],[50.1,-13.6,50.4,-15.7,50.2,-16.0,49.9,-15.4,49.7,-15.7,49.8,-16.9,47.1,-24.9,45.4,-25.6,44.0,-25.0,43.2,-22.1,44.4,-20.1,44.0,-17.4,44.5,-16.2,46.3,-15.8,47.7,-14.6,47.9,-13.7,48.3,-13.8,49.2,-12.0,50.1,-13.6],[143.6,-13.8,143.9,-14.6,144.6,-14.2,145.4,-15.0,146.4,-19.0,148.8,-20.4,149.7,-22.3,150.7,-22.4,150.9,-23.5,152.9,-25.3,153.1,-26.1,153.6,-28.1,153.1,-30.9,150.3,-35.7,150.0,-37.4,148.3,-37.8,146.3,-39.0,144.9,-38.4,145.0,-37.9,143.6,-38.8,140.6,-38.0,139.6,-36.1,138.1,-35.6,138.2,-34.4,137.7,-35.1,136.8,-35.3,137.9,-33.6,137.8,-32.9,136.0,-34.9,135.2,-34.5,134.3,-32.6,131.3,-31.5,126.2,-32.2,124.2,-33.0,123.7,-33.9,119.9,-34.0,118.0,-35.1,116.6,-35.0,115.0,-34.2,115.0,-33.6,115.7,-33.3,115.7,-31.6,113.3,-26.1,113.8,-26.6,113.4,-25.6,114.2,-26.3,113.4,-24.4,114.2,-21.8,114.2,-22.5,114.7,-21.8,116.7,-20.7,120.9,-19.7,122.2,-18.2,122.3,-17.2,123.0,-16.4,123.4,-17.3,123.9,-17.1,123.5,-16.6,123.8,-16.1,124.3,-16.3,124.4,-15.6,125.7,-14.2,127.1,-13.8,128.4,-14.9,129.6,-15.0,129.4,-14.4,130.6,-12.5,132.6,-12.1,132.6,-11.6,131.8,-11.3,135.3,-12.2,136.5,-11.9,136.9,-12.3,136.0,-13.3,135.5,-15.0,140.2,-17.7,140.9,-17.4,141.3,-16.4,141.7,-12.4,142.5,-10.7,143.6,-13.8],[162.1,-10.5,162.4,-10.8,161.7,-10.8,161.3,-10.2,162.1,-10.5],[120.7,-10.2,119.0,-9.6,119.9,-9.4,120.7,-10.2],[160.8,-9.9,159.8,-9.8,159.7,-9.2,160.8,-9.9],[124.4,-10.1,123.5,-10.2,124.0,-9.3,125.1,-8.7,127.3,-8.4,125.1,-9.4,124.4,-10.1],[117.9,-8.1,119.1,-8.7,116.7,-9.0,117.9,-8.1],[122.9,-8.1,122.8,-8.7,119.9,-8.8,119.9,-8.4,120.7,-8.2,121.3,-8.5,122.9,-8.1],[108.6,-6.8,110.5,-6.9,110.8,-6.5,115.7,-8.4,114.6,-8.8,108.3,-7.8,105.4,-6.8,106.0,-5.9,107.3,-6.0,108.6,-6.8],[134.7,-6.2,134.2,-6.9,134.5,-5.5,134.7,-6.2],[155.9,-6.8,155.2,-6.5,154.5,-5.1,155.9,-6.8],[152.0,-5.5,150.2,-6.3,148.3,-5.8,149.8,-5.5,150.1,-5.0,150.2,-5.5,150.8,-5.5,151.7,-4.8,151.5,-4.2,152.1,-4.2,152.0,-5.5],[127.2,-3.5,126.9,-3.8,126.0,-3.2,127.2,-3.5],[130.5,-3.1,130.8,-3.9,127.9,-3.4,128.1,-2.8,130.5,-3.1],[153.1,-4.5,152.8,-4.8,152.4,-3.8,150.7,-2.7,150.9,-2.5,152.2,-3.2,153.1,-4.5],[134.1,-1.1,134.4,-2.8,135.5,-3.4,136.3,-2.3,138.3,-1.7,144.6,-3.9,146.0,-5.5,147.7,-6.1,147.9,-6.6,147.0,-6.7,147.2,-7.4,150.7,-10.6,147.9,-10.1,146.1,-8.1,144.7,-7.6,143.3,-8.2,143.4,-9.0,142.6,-9.3,141.0,-9.1,140.1,-8.3,139.1,-8.1,137.6,-8.4,138.7,-7.3,137.9,-5.4,133.7,-3.5,133.0,-4.1,132.8,-3.3,132.0,-2.8,133.7,-2.2,132.2,-2.2,130.5,-0.9,132.4,-0.4,134.1,-1.1],[125.2,1.4,124.4,0.4,123.7,0.2,120.2,0.2,120.0,-0.5,120.9,-1.4,123.3,-0.6,123.3,-1.1,122.8,-0.9,121.5,-1.9,123.2,-5.3,122.6,-5.6,122.2,-5.3,122.7,-4.5,121.7,-4.8,121.5,-4.6,121.6,-4.2,120.9,-3.6,121.0,-2.6,120.3,-2.9,120.4,-5.5,119.4,-5.4,119.5,-3.5,118.8,-2.8,120.0,0.6,120.9,1.3,122.9,0.9,125.2,1.4],[128.7,1.1,128.6,0.3,128.1,0.4,128.1,-0.9,127.4,1.0,127.9,2.2,128.7,1.1],[105.8,-5.8,104.7,-5.9,102.6,-4.2,99.3,0.2,98.6,1.8,95.3,5.5,97.5,5.2,100.6,2.1,101.7,2.1,103.8,0.1,103.4,-0.7,104.4,-1.1,104.9,-2.3,106.1,-3.1,105.8,-5.8],[117.9,1.8,119.0,0.9,117.8,0.8,117.5,-0.8,116.6,-1.5,116.2,-4.0,116.0,-3.7,114.9,-4.1,114.5,-3.5,113.3,-3.1,112.1,-3.5,111.7,-3.0,110.2,-2.9,110.1,-1.6,109.1,-0.5,109.1,1.3,109.7,2.0,111.2,1.9,111.4,2.7,113.0,3.1,116.7,6.9,119.2,5.4,117.3,3.2,118.0,2.3,117.9,1.8],[126.4,8.4,126.5,7.2,126.2,6.3,125.8,7.3,125.4,6.8,125.4,5.6,124.2,6.2,124.2,7.4,123.6,7.8,122.1,6.9,121.9,7.2,122.3,8.0,123.5,8.7,123.8,8.2,125.5,9.0,125.4,9.8,126.2,9.3,126.4,8.4],[81.2,6.2,80.3,6.0,79.9,6.8,79.7,8.2,80.2,9.8,81.8,7.5,81.2,6.2],[-60.9,10.1,-62.0,10.1,-61.7,10.8,-61.1,10.9,-60.9,10.1],[124.0,10.3,123.0,9.0,122.4,9.7,123.0,10.9,123.5,10.9,123.3,10.3,124.1,11.2,124.0,10.3],[118.5,9.3,117.2,8.4,119.5,11.4,119.7,10.6,118.5,9.3],[121.9,11.9,123.1,11.6,122.0,10.4,121.9,11.9],[125.5,12.2,125.8,11.1,125.0,11.3,125.3,10.4,124.8,10.1,124.3,11.5,124.9,11.4,124.9,11.8,124.3,12.6,125.5,12.2],[121.5,13.1,121.3,12.2,120.3,13.5,121.5,13.1],[121.3,18.5,122.2,18.5,122.5,17.1,121.7,15.9,121.7,14.3,124.0,13.8,124.1,12.5,122.9,13.6,122.7,13.2,122.0,13.8,120.6,13.9,121.0,14.5,120.7,14.8,120.6,14.4,120.1,15.0,119.9,16.4,120.3,16.0,120.7,18.5,121.3,18.5],[-65.6,18.2,-67.2,17.9,-67.2,18.4,-65.6,18.2],[-76.9,17.9,-78.3,18.2,-76.9,18.4,-76.2,17.9,-76.9,17.9],[-72.6,19.9,-70.0,19.6,-68.3,18.6,-68.7,18.2,-70.7,18.4,-71.4,17.6,-72.4,18.2,-74.5,18.3,-74.4,18.7,-72.3,18.7,-72.8,19.5,-73.4,19.6,-72.6,19.9],[110.3,18.7,109.5,18.2,108.7,18.5,108.6,19.4,110.8,20.1,111.0,19.7,110.3,18.7],[-155.5,19.1,-155.9,19.1,-155.9,20.3,-154.8,19.5,-155.5,19.1],[-79.7,22.8,-78.3,22.5,-74.2,20.3,-77.8,19.9,-77.1,20.4,-78.1,20.7,-78.7,21.6,-82.2,22.4,-81.8,22.6,-85.0,21.9,-82.3,23.2,-79.7,22.8],[-77.5,23.8,-78.4,24.6,-78.2,25.2,-77.5,23.8],[121.2,22.8,120.8,22.0,120.1,23.6,121.5,25.3,122.0,25.0,121.2,22.8],[-77.8,26.6,-78.9,26.4,-79.0,26.8,-77.8,26.6],[-77,26.6,-77.2,25.9,-77.8,27.0,-77,26.6],[134.6,34.1,134.2,33.2,133.8,33.5,133.0,32.7,132.4,33.0,132.9,34.1,134.6,34.1],[34.6,35.7,33.0,34.6,32.3,35.1,34.6,35.7],[23.7,35.7,26.3,35.3,24.7,34.9,23.5,35.3,23.7,35.7],[15.5,38.2,15.1,36.6,12.4,37.6,12.6,38.1,15.5,38.2],[9.2,41.2,9.8,40.5,9.7,39.2,8.8,38.9,8.2,41.0,9.2,41.2],[141.0,37.1,140.2,35.1,137.2,34.6,135.8,33.5,135.1,33.9,135.1,34.6,131.0,33.9,132.0,33.1,131.3,31.4,130.7,31.0,130.2,31.4,130.4,32.3,129.4,33.3,132.6,35.4,135.7,35.5,136.7,37.3,137.4,36.8,139.4,38.2,140.1,39.4,139.9,40.6,140.3,41.2,141.4,41.4,141.9,39.2,141.0,38.2,141.0,37.1],[9.6,42.1,9.2,41.4,8.5,42.3,9.4,43.0,9.6,42.1],[143.9,44.2,144.6,44.0,145.3,44.4,145.5,43.3,144.1,43.0,143.2,42.0,141.6,42.7,141.1,41.6,140.0,41.6,139.8,42.6,140.3,43.3,141.4,43.4,142.0,45.5,143.9,44.2],[-63.7,46.5,-62.0,46.4,-62.9,46.0,-64.4,46.7,-64.0,47.0,-63.7,46.5],[-123.5,48.5,-125.7,48.8,-128.1,50.0,-128.4,50.8,-125.8,50.3,-123.5,48.5],[-56.1,50.7,-56.8,49.8,-56.1,50.1,-55.5,49.9,-55.8,49.6,-53.5,49.2,-53.8,48.5,-53.1,48.7,-52.6,47.5,-53.1,46.7,-54.2,46.8,-54.2,47.8,-55.4,46.9,-56.0,46.9,-55.3,47.4,-56.2,47.6,-59.3,47.6,-58.8,48.2,-59.2,48.5,-57.4,50.7,-55.4,51.6,-56.1,50.7],[-132.7,54.0,-131.8,54.1,-132.1,53.0,-131.2,52.2,-133.1,53.4,-133.2,54.2,-132.7,54.0],[143.7,50.8,144.7,49.0,143.2,49.3,142.6,47.9,143.5,46.8,143.5,46.1,142.8,46.7,142.1,46.0,142.2,51.0,141.6,51.9,141.7,53.3,142.6,53.8,142.2,54.2,142.7,54.4,143.7,50.8],[-6.8,52.3,-8.6,51.7,-10.0,51.8,-9.2,52.9,-9.7,53.9,-6.7,55.2,-5.7,54.5,-6.8,52.3],[12.7,55.6,12.1,54.8,10.9,55.8,12.4,56.1,12.7,55.6],[-153.0,57.1,-154.0,56.7,-154.7,57.5,-153.2,58.0,-152.1,57.6,-153.0,57.1],[-3.0,58.6,-4.1,57.5,-2.0,57.7,-3.1,56.0,-2.1,55.9,-1.1,54.6,-0.4,54.5,0.5,52.9,1.7,52.7,1.1,51.8,1.4,51.3,0.6,50.8,-3.0,50.7,-5.2,50.0,-5.8,50.2,-3.4,51.4,-5.3,52.0,-4.2,52.3,-4.8,52.8,-4.6,53.5,-3.1,53.4,-3.0,54.0,-3.6,54.6,-4.8,54.8,-5.0,55.8,-5.6,55.3,-6.2,56.8,-5.0,58.6,-3.0,58.6],[-165.6,59.9,-167.5,60.2,-165.7,60.3,-165.6,59.9],[-79.3,62.2,-79.7,61.6,-80.4,62.0,-79.9,62.4,-79.3,62.2],[-81.9,62.7,-83.1,62.2,-84.0,62.5,-83.2,62.9,-81.9,62.7],[-171.7,63.8,-168.7,63.3,-169.5,63.0,-171.6,63.3,-171.7,63.8],[-85.2,65.7,-85.0,65.2,-80.1,63.7,-81.0,63.4,-83.1,64.1,-85.5,63.0,-85.9,63.6,-87.2,63.5,-86.3,64.0,-85.9,65.7,-85.2,65.7],[-14.5,66.5,-14.7,65.8,-13.6,65.1,-14.9,64.4,-18.7,63.5,-22.8,64.0,-21.8,64.4,-24.0,64.9,-22.2,65.1,-22.2,65.4,-24.3,65.6,-23.6,66.3,-22.1,66.4,-20.6,65.7,-19.1,66.3,-17.8,66.0,-16.2,66.5,-14.5,66.5],[-75.9,67.2,-77.0,67.1,-77.2,67.6,-76.8,68.2,-75.1,68.0,-75.9,67.2],[-175.0,66.6,-174.3,66.3,-174.6,67.1,-171.9,66.9,-169.9,66.0,-172.5,65.4,-172.6,64.5,-173.0,64.2,-176.0,64.9,-176.2,65.4,-178.4,65.4,-178.9,65.7,-178.7,66.1,-179.9,65.9,-179.4,65.4,-180,65.0,-180,69.0,-174.9,67.2,-175.0,66.6],[-95.7,69.1,-96.3,68.8,-99.8,69.4,-98.2,70.1,-95.7,69.1],[180,70.8,178.7,71.1,180,71.5,180,70.8],[-178.7,70.9,-180,70.8,-180,71.5,-177.6,71.3,-178.7,70.9],[-90.5,69.5,-90.5,68.5,-89.2,69.3,-88.0,68.6,-88.3,67.9,-87.3,67.2,-85.6,68.8,-85.5,69.9,-82.6,69.7,-81.3,69.2,-81.2,68.7,-82.0,68.1,-81.3,67.6,-81.4,67.1,-83.3,66.4,-85.8,66.6,-87.3,64.8,-88.5,64.1,-89.9,64.0,-90.7,63.6,-90.8,63.0,-91.9,62.8,-93.2,62.0,-94.2,60.9,-94.7,59.0,-93.2,58.8,-92.3,57.1,-90.9,57.3,-85.0,55.3,-82.3,55.1,-82.1,53.3,-81.4,52.2,-79.9,51.2,-79.1,51.5,-78.6,52.6,-79.1,54.1,-79.8,54.7,-78.2,55.1,-76.5,56.5,-77.3,58.0,-78.5,58.8,-77.3,59.9,-78.1,62.3,-73.8,62.4,-71.4,61.1,-69.6,61.1,-69.3,59.0,-67.7,58.2,-66.2,58.8,-64.6,60.3,-61.4,57.0,-61.8,56.3,-57.3,54.6,-56.9,53.8,-55.8,53.3,-55.7,52.1,-60.0,50.2,-66.4,50.2,-68.5,49.1,-71.1,46.8,-68.7,48.3,-65.1,49.2,-64.2,48.7,-65.1,48.1,-64.5,46.2,-63.2,45.7,-61.5,45.9,-60.5,47.0,-60.5,46.3,-59.8,45.9,-65.4,43.5,-66.1,43.6,-66.2,44.5,-64.4,45.3,-67.1,45.1,-67.0,44.8,-70.1,43.7,-70.7,43.0,-70.8,42.3,-70.0,41.6,-73.7,40.9,-72.0,40.9,-74.0,40.8,-74.9,38.9,-75.5,39.5,-75.1,38.4,-75.9,37.2,-75.7,37.9,-76.3,39.1,-76.3,38.1,-77.0,38.2,-76.3,37.9,-75.7,35.5,-79.1,33.5,-81.3,31.4,-81.3,30.0,-80.1,26.9,-80.4,25.2,-81.2,25.2,-81.7,25.9,-82.9,27.9,-82.9,29.1,-84.1,30.1,-85.1,29.6,-86.4,30.4,-89.2,30.3,-89.6,30.2,-89.2,29.3,-90.2,29.1,-91.6,29.7,-93.8,29.7,-96.6,28.3,-97.4,27.4,-97.1,25.9,-97.9,22.4,-96.3,19.3,-94.4,18.1,-92.0,18.7,-90.8,19.3,-90.3,21.0,-87.0,21.5,-86.8,20.9,-87.8,18.3,-88.3,18.5,-88.4,16.5,-88.9,15.9,-85.0,16.0,-83.4,15.3,-83.2,14.3,-83.8,11.1,-82.2,9.0,-81.4,8.8,-79.6,9.6,-76.8,8.6,-75.7,9.4,-75.5,10.6,-74.9,11.1,-73.4,11.2,-71.8,12.4,-71.1,12.1,-72.0,11.4,-71.7,9.1,-71.0,9.9,-71.4,11.0,-70.2,11.4,-69.9,12.2,-68.2,10.6,-66.2,10.7,-64.9,10.1,-64.3,10.6,-61.9,10.7,-62.7,10.4,-62.4,9.9,-60.8,9.4,-60.7,8.6,-59.1,8.0,-58.5,6.8,-57.1,6.0,-54.0,5.8,-51.3,4.2,-50.5,1.9,-50.0,1.7,-50.0,1.1,-50.7,0.2,-50.4,-0.1,-48.6,-0.2,-48.6,-1.2,-47.8,-0.6,-44.9,-1.6,-44.4,-2.1,-44.6,-2.7,-43.4,-2.4,-40.0,-2.9,-37.2,-4.8,-35.6,-5.2,-34.7,-7.3,-35.1,-9.0,-38.7,-13.1,-39.3,-17.9,-40.9,-21.9,-42.0,-23.0,-44.6,-23.4,-47.6,-24.9,-48.5,-25.9,-48.9,-28.7,-53.8,-34.4,-54.9,-35.0,-56.2,-34.9,-58.4,-33.9,-58.5,-34.4,-57.2,-35.3,-57.4,-36.0,-56.7,-36.4,-56.8,-36.9,-57.8,-38.2,-59.2,-38.7,-62.3,-38.8,-62.1,-40.7,-62.8,-41.0,-65.1,-41.1,-65.0,-42.1,-64.3,-42.4,-63.8,-42.0,-63.5,-42.6,-65.2,-43.5,-65.6,-45.0,-67.3,-45.5,-67.6,-46.3,-65.6,-47.2,-66.0,-48.1,-67.2,-48.7,-67.8,-49.9,-69.1,-50.7,-68.2,-52.4,-69.5,-52.3,-70.8,-52.9,-71.0,-53.8,-75.0,-52.3,-75.6,-48.7,-74.1,-46.9,-75.6,-46.6,-74.7,-45.8,-74.3,-44.1,-73.2,-44.5,-72.7,-42.4,-73.4,-42.1,-73.7,-43.4,-74.3,-43.2,-73.2,-39.3,-73.6,-37.2,-73.2,-37.1,-71.4,-32.4,-71.5,-28.9,-70.9,-27.6,-70.2,-19.8,-70.4,-18.4,-71.5,-17.4,-76.0,-14.7,-79.8,-7.2,-81.2,-6.1,-80.9,-5.7,-81.4,-4.7,-79.8,-2.7,-80.0,-2.2,-80.4,-2.7,-81.0,-2.2,-80.9,-1.1,-80.1,0.8,-78.9,1.4,-78.4,2.6,-77.1,3.9,-77.5,4.1,-77.5,6.7,-78.2,7.5,-78.2,8.3,-79.6,8.9,-80.5,8.1,-80.0,7.5,-80.9,7.2,-81.1,7.8,-83.5,8.4,-83.6,9.1,-85.0,10.1,-85.1,9.6,-85.7,9.9,-85.7,11.1,-87.7,12.9,-87.5,13.3,-88.5,13.2,-91.2,13.9,-94.7,16.2,-96.6,15.7,-103.5,18.3,-105.5,19.9,-105.7,20.4,-105.3,21.4,-106.0,22.8,-109.3,25.6,-109.3,26.4,-110.4,27.2,-110.6,27.9,-112.2,28.9,-113.2,31.2,-114.8,31.8,-114.7,30.2,-111.6,26.7,-110.7,24.3,-109.4,23.4,-110.0,22.8,-112.2,24.7,-112.3,26.0,-115.1,27.7,-114.6,27.7,-114.2,28.6,-115.5,29.6,-117.3,33.0,-118.5,34.0,-120.6,34.6,-124.4,40.3,-124.5,42.8,-123.9,45.5,-124.7,48.2,-123.1,48.0,-122.6,47.1,-122.8,49.0,-127.4,50.8,-127.8,52.3,-129.1,52.8,-129.3,53.6,-132.0,55.5,-132.2,56.4,-133.5,57.2,-134.1,58.1,-136.6,58.2,-139.9,59.5,-147.1,60.9,-148.2,60.7,-148.0,60.0,-151.7,59.2,-151.4,60.7,-150.3,61.0,-150.6,61.3,-154.0,59.4,-153.3,58.9,-154.2,58.1,-156.3,57.4,-158.4,56.0,-164.8,54.4,-157.7,57.6,-157.0,58.9,-159.1,58.4,-160.4,59.1,-162.0,58.7,-161.9,59.6,-162.5,60.0,-163.8,59.8,-165.3,60.5,-165.3,61.1,-166.1,61.5,-164.6,63.1,-163.1,63.1,-160.8,63.8,-161.5,64.4,-160.8,64.8,-165.0,64.5,-166.4,64.7,-168.1,65.7,-164.5,66.6,-163.7,66.6,-163.8,66.1,-161.7,66.1,-166.8,68.4,-166.2,68.9,-163.2,69.4,-161.9,70.3,-156.6,71.4,-154.3,70.7,-143.6,70.2,-136.5,68.9,-134.4,69.6,-129.8,70.2,-129.1,69.8,-128.1,70.5,-125.8,69.5,-124.4,70.2,-124.3,69.4,-121.5,69.8,-113.9,68.4,-115.3,67.9,-110.0,68.0,-108.9,67.4,-107.8,67.9,-108.8,68.3,-108.2,68.7,-106.2,68.8,-104.3,68.0,-101.5,67.7,-98.4,67.8,-98.6,68.4,-97.7,68.6,-96.1,68.2,-96.1,67.3,-95.5,68.1,-94.7,68.1,-94.2,69.1,-96.5,70.1,-96.4,71.2,-95.2,71.9,-92.9,71.3,-91.5,70.2,-92.4,69.7,-90.5,69.5],[-114.2,73.1,-114.7,72.7,-112.4,73.0,-111.0,72.5,-109.9,73.0,-108.2,71.7,-107.7,72.1,-108.4,73.1,-106.5,73.1,-105.4,72.7,-104.5,71.0,-101.0,70.0,-101.1,69.6,-102.7,69.5,-102.1,69.1,-102.4,68.8,-106.0,69.2,-113.3,68.5,-113.8,69.0,-116.1,69.2,-117.3,70.0,-112.4,70.4,-117.9,70.5,-118.4,70.9,-116.1,71.3,-119.4,71.6,-117.9,72.7,-115.2,73.3,-114.2,73.1],[-104.5,73.4,-105.4,72.8,-106.9,73.5,-104.5,73.4],[-76.3,73.1,-79.5,72.7,-80.9,73.3,-80.3,73.8,-78.1,73.7,-76.3,73.1],[-86.6,73.2,-85.8,72.5,-84.8,73.3,-82.3,73.8,-80.6,72.7,-80.8,72.1,-77.8,72.8,-74.2,71.8,-74.1,71.3,-72.2,71.6,-71.2,70.9,-68.8,70.5,-67.0,69.2,-68.8,68.7,-64.9,67.8,-63.4,66.9,-61.9,66.9,-62.2,66.2,-63.9,65.0,-66.7,66.4,-68.0,66.3,-68.1,65.7,-65.3,64.4,-64.7,63.4,-65.0,62.7,-68.8,63.8,-66.2,61.9,-71.0,62.9,-72.2,63.4,-71.9,63.7,-74.8,64.7,-77.7,64.2,-78.6,64.6,-77.9,65.3,-74.0,65.5,-74.3,65.8,-72.7,67.3,-72.9,67.7,-76.9,68.9,-76.2,69.2,-79.0,70.2,-81.3,69.7,-84.9,70.0,-88.7,70.4,-89.5,70.8,-88.5,71.2,-89.9,71.2,-90.2,72.2,-89.4,73.1,-85.8,73.8,-86.6,73.2],[-100.4,73.8,-97.4,73.8,-97.1,73.5,-98.0,73.0,-96.5,72.6,-96.7,71.7,-99.3,71.4,-102.5,72.5,-102.5,72.8,-100.4,72.7,-101.5,73.4,-100.4,73.8],[143.6,73.2,139.9,73.4,142.1,73.9,143.6,73.2],[-93.2,72.8,-94.3,72.0,-95.4,72.1,-96.0,73.4,-94.5,74.1,-90.5,73.9,-93.2,72.8],[-120.5,71.4,-123.1,70.9,-125.9,71.9,-123.9,73.7,-124.9,74.3,-117.6,74.2,-115.5,73.5,-119.2,72.5,-120.5,71.8,-120.5,71.4],[150.7,75.1,149.6,74.7,146.1,75.2,146.4,75.5,150.7,75.1],[-93.6,75.0,-94.2,74.6,-96.8,74.9,-94.8,75.7,-93.6,75.0],[145.1,75.6,144.3,74.8,139.0,74.6,137.0,75.3,137.5,76.0,138.8,76.1,145.1,75.6],[-98.5,76.7,-97.7,76.3,-98.2,75,-99.8,74.9,-100.9,75.1,-100.9,75.6,-102.5,75.6,-102.6,76.3,-98.5,76.7],[-108.2,76.2,-107.8,75.8,-105.9,76.0,-105.7,75.5,-106.3,75.0,-112.2,74.4,-113.7,74.4,-113.9,74.7,-111.8,75.2,-117.7,75.2,-115.4,76.5,-109.1,75.5,-110.5,76.4,-109.6,76.8,-108.5,76.7,-108.2,76.2],[57.5,70.7,53.7,70.8,53.4,71.2,51.6,71.5,51.5,72.0,54.4,73.6,53.5,73.8,55.9,74.6,55.6,75.1,66.2,76.8,68.2,76.9,68.8,76.5,58.5,74.3,55.4,72.4,55.6,71.5,57.5,70.7],[-94.7,77.1,-91.6,76.8,-90.7,76.5,-91.0,76.1,-89.2,75.6,-81.1,75.7,-79.8,74.9,-82.0,74.4,-89.8,74.5,-92.4,74.8,-92.9,75.9,-93.9,76.3,-97.1,76.8,-96.8,77.2,-94.7,77.1],[-116.2,77.7,-116.3,76.9,-117.1,76.5,-121.5,75.9,-122.8,76.1,-119.1,77.5,-116.2,77.7],[107.0,77.0,107.2,76.5,111.1,76.7,114.1,75.8,113.9,75.3,109.4,74.2,113.0,74.0,113.5,73.3,115.6,73.8,123.2,73.0,123.3,73.7,127.0,73.6,128.6,73.0,129.1,72.4,128.5,72.0,131.3,70.8,132.2,71.8,133.9,71.4,139.9,71.5,139.2,72.4,140.5,72.8,149.5,72.2,153.0,70.8,159.0,70.9,159.8,70.5,159.7,69.7,160.9,69.4,167.8,69.6,169.6,68.7,170.8,69.0,170.0,69.7,170.4,70.1,175.7,69.9,180,69.0,180,65.0,177.4,64.6,179.4,63.0,179.2,62.3,177.4,62.5,173.7,61.6,170.3,59.9,168.9,60.6,166.3,59.8,165.8,60.2,164.9,59.7,163.5,59.9,162.0,58.2,162.1,57.8,163.2,57.6,163.1,56.2,162.1,56.1,161.7,55.3,162.1,54.9,160.4,54.3,160.0,53.2,158.5,53.0,158.2,51.9,156.8,51.0,155.4,55.4,155.9,56.8,156.8,57.8,158.4,58.1,163.7,61.1,164.5,62.5,163.3,62.5,162.7,61.6,160.1,60.5,159.3,61.8,156.7,61.4,154.2,59.8,155.0,59.1,151.3,58.8,151.3,59.5,149.8,59.7,148.5,59.2,142.2,59.0,135.1,54.7,136.7,54.6,138.2,53.8,138.8,54.2,139.9,54.2,141.3,53.1,141.4,52.2,140.6,51.2,140.1,48.5,138.2,46.3,134.9,43.4,133.5,42.8,132.3,43.3,130.0,41.9,129.7,40.9,127.5,39.8,127.4,39.2,128.3,38.6,129.5,36.8,129.1,35.1,126.5,34.4,126.1,36.7,126.9,36.9,126.2,37.8,124.7,38.1,125.3,39.5,124.3,39.9,121.0,38.9,122.2,40.4,121.6,41.0,119.0,39.2,118.0,39.2,117.5,38.7,118.9,37.9,118.9,37.5,119.7,37.2,120.8,37.9,122.4,37.5,122.5,36.9,121.1,36.6,119.2,34.9,120.2,34.4,121.9,31.7,121.9,30.9,121.3,30.7,122.1,29.8,121.7,28.2,121.1,28.1,118.7,24.6,115.9,22.8,114.2,22.2,113.8,22.6,110.8,21.4,110.4,20.3,109.9,20.3,109.9,21.4,108.5,21.7,105.9,19.8,105.7,19.1,108.9,15.3,109.3,13.4,109.2,11.7,105.2,8.6,104.8,9.2,105.1,9.9,103.5,10.6,102.6,12.2,100.8,12.6,101.0,13.4,100.1,13.4,99.2,9.2,99.9,9.2,100.5,7.4,103.4,4.9,103.5,2.8,104.2,1.3,103.5,1.2,101.4,2.8,100.1,6.5,98.5,8.4,98.3,7.8,98.8,11.4,97.2,16.9,95.4,15.7,94.2,16.0,94.3,18.2,93.7,19.7,92.4,20.7,91.4,22.8,90.5,22.8,90.3,21.8,89.0,22.1,88.9,21.7,87.0,21.5,87.0,20.7,86.5,20.1,85.1,19.5,82.2,17.0,82.2,16.6,80.3,15.9,79.9,10.4,79.3,10.3,78.9,9.6,79.2,9.2,78.3,8.9,77.5,8.0,76.6,8.9,73.5,16.0,72.6,21.4,70.5,20.9,69.2,22.1,69.6,22.4,69.3,22.8,67.4,23.9,66.4,25.4,61.5,25.1,57.4,25.7,57.0,27.0,54.7,26.5,51.5,27.9,50.1,30.1,48.0,30.0,48.8,27.7,50.1,26.7,50.8,24.8,51.0,26.0,51.6,25.8,51.4,24.6,51.8,24.0,54.0,24.1,56.4,26.4,56.9,24.2,58.7,23.6,59.8,22.3,58.5,20.4,57.8,20.2,57.7,18.9,55.3,17.6,55.3,17.2,52.4,16.4,52.2,15.6,48.7,14.0,45.6,13.3,45.0,12.7,43.5,12.6,42.6,15.2,42.6,16.8,40.9,19.5,39.1,21.3,38.5,23.7,37.5,24.3,35.1,28.1,34.6,28.1,34.9,29.5,33.9,27.6,32.4,29.9,34.1,26.1,35.7,23.9,35.5,23.1,36.9,22.0,37.5,18.6,38.4,18.0,39.3,15.9,43.3,12.4,42.7,11.7,44.6,10.4,51.1,12.0,51.0,10.6,49.5,6.8,47.7,4.2,40.3,-2.6,39.2,-4.7,38.8,-6.5,39.4,-6.8,39.2,-8.5,40.5,-10.8,40.8,-14.7,39.5,-16.7,37.4,-17.6,34.8,-19.8,35.6,-23.7,35.0,-24.5,32.6,-25.7,32.9,-26.2,32.2,-28.8,28.2,-32.8,25.8,-33.9,22.6,-33.9,19.6,-34.8,18.4,-34.1,17.9,-32.6,18.2,-31.7,15.2,-27.1,14.3,-22.1,11.8,-18.1,11.8,-15.8,12.5,-13.6,13.6,-12.0,13.7,-10.7,12.9,-9.2,13.2,-8.6,11.9,-5.0,8.8,-1.1,9.8,3.1,9.4,3.7,8.5,4.8,5.9,4.3,4.3,6.3,1.9,6.1,-2.0,4.7,-4.7,5.2,-7.5,4.3,-9.0,4.8,-12.4,7.3,-14.8,10.9,-16.6,12.2,-16.7,13.6,-17.6,14.7,-16.5,16.1,-16.1,18.1,-17.0,21.9,-15.1,24.5,-14.4,26.2,-12.6,28.0,-11.7,28.1,-9.6,29.9,-9.8,31.2,-9.3,32.6,-6.9,34.1,-5.9,35.8,-2.2,35.2,1.5,36.6,9.5,37.4,10.2,37.2,10.2,36.7,11.1,36.9,10.6,36.4,10.9,35.7,10.8,34.8,10.2,34.3,10.3,33.8,15.2,32.3,15.7,31.4,19.1,30.3,20.1,31.0,20.1,32.2,21.5,32.8,28.9,30.9,31.0,31.6,32.0,30.9,32.2,31.3,33.8,31.0,34.6,31.6,36.0,34.6,36.1,35.8,35.8,36.3,36.2,36.6,34.7,36.8,34.0,36.2,32.5,36.1,31.7,36.6,30.6,36.7,29.7,36.1,27.6,36.7,26.3,38.2,26.8,39.0,26.2,39.5,27.3,40.4,28.8,40.5,29.2,41.2,31.1,41.1,33.5,42.0,35.2,42.0,38.4,41.0,40.4,41.0,41.7,42.0,41.5,42.6,36.7,45.2,38.2,46.2,37.7,46.6,39.1,47.3,35.0,46.3,35.0,45.6,36.5,45.5,36.3,45.1,33.9,44.4,33.3,44.6,33.5,45.0,32.5,45.3,33.6,45.9,33.3,46.1,31.7,46.3,31.7,46.7,30.8,46.6,29.6,45.0,28.8,44.9,27.7,42.6,28.8,41.0,27.6,41.0,26.4,40.1,26.1,40.8,24.9,41.0,23.7,40.7,24.4,40.1,23.9,40.0,22.6,40.3,23.4,39.2,23.0,39.0,24.0,38.2,24.0,37.7,23.1,37.9,23.4,37.4,22.8,37.3,23.1,36.4,22.5,36.4,21.7,36.9,21.1,38.3,19.4,40.2,19.5,41.7,16.0,43.5,14.9,45.1,14.3,45.2,13.9,44.8,13.9,45.6,13.1,45.7,12.3,45.4,12.6,44.1,15.1,42.0,15.9,42.0,15.9,41.5,18.5,40.2,18.3,39.8,16.9,40.4,16.4,39.8,17.2,39.4,17.1,38.9,16.1,38.0,15.7,37.9,16.1,39.0,15.4,40.0,12.1,41.7,10.5,42.9,10.2,43.9,8.9,44.4,6.5,43.1,3.1,43.1,3.0,41.9,0.8,41.0,-0.3,39.3,0.1,38.7,-2.1,36.7,-4.4,36.7,-5.4,36.0,-6.5,36.9,-8.9,36.9,-8.8,38.3,-9.5,38.7,-8.8,40.8,-9.4,43.0,-8.0,43.8,-1.9,43.4,-1.4,44.0,-1.2,46.0,-3.0,47.6,-4.5,48.0,-4.6,48.7,-1.6,48.6,-1.9,49.8,-1.0,49.4,1.3,50.1,1.6,51.0,3.8,51.6,4.7,53.1,8.1,53.5,8.8,54.0,8.1,55.5,8.5,57.1,10.6,57.7,10.2,56.9,10.9,56.5,9.7,55.5,9.9,54.6,10.9,54.4,10.9,54.0,12.5,54.5,14.1,53.8,17.6,54.9,19.7,54.4,21.3,55.2,21.1,56.8,21.6,57.4,22.5,57.8,23.3,57.0,24.1,57.0,24.4,58.4,23.4,58.6,23.3,59.2,28.0,59.5,29.1,60.0,28.1,60.5,22.9,59.9,21.3,60.7,21.5,61.7,21.1,62.6,21.5,63.2,25.4,65.1,25.3,65.5,23.9,66.0,22.2,65.7,21.2,65.0,21.4,64.4,17.9,62.8,17.1,61.3,18.8,60.1,17.9,59.0,16.8,58.7,15.9,56.1,14.7,56.2,14.1,55.4,12.9,55.4,10.4,59.5,8.4,58.3,7.0,58.1,5.7,58.6,5.0,62.0,10.5,64.5,14.8,67.8,19.2,69.8,23.0,70.2,24.6,71.0,28.2,71.2,31.3,70.5,30.0,70.2,31.1,69.6,32.1,69.9,36.5,69.1,41.1,67.5,41.1,66.8,38.4,66.0,33.2,66.6,34.8,65.9,34.9,64.4,37.0,63.9,37.1,64.3,36.5,64.8,37.2,65.1,39.6,64.5,40.4,64.8,39.8,65.5,42.1,66.5,44.0,66.1,44.5,66.8,43.7,67.3,44.2,68.0,43.5,68.6,46.2,68.2,46.8,67.7,45.6,67.6,45.6,67.0,46.4,66.7,47.9,66.9,48.1,67.5,53.7,68.9,54.5,68.8,53.5,68.2,58.8,68.9,59.9,68.3,61.1,68.9,60.0,69.5,60.5,69.8,63.5,69.5,68.5,68.1,69.2,68.6,68.1,69.4,66.9,69.5,67.3,69.9,66.7,71.0,68.5,71.9,69.2,72.8,72.6,72.8,72.8,72.2,71.8,71.4,72.8,70.4,72.6,69.0,73.7,68.4,71.3,66.3,72.4,66.2,75.0,67.8,74.5,68.3,74.9,69.0,73.8,69.1,73.6,69.6,74.4,70.6,73.1,71.5,74.9,72.1,74.7,72.8,75.7,72.3,75.3,71.3,76.4,71.2,75.9,71.9,77.6,72.3,79.7,72.3,81.5,71.8,80.6,72.6,80.5,73.7,86.8,73.9,86.0,74.5,87.2,75.1,93.2,76.0,96.7,75.9,100.8,76.4,102.0,77.3,104.3,77.7,106.1,77.4,104.7,77.1,107.0,77.0],[49.1,41.3,50.4,40.3,49.6,40.2,48.9,38.8,49.2,37.6,50.8,36.9,53.8,37.0,53.9,39.0,53.1,39.3,53.4,40.0,52.7,40.0,52.9,40.9,54.7,41.0,53.7,42.1,52.9,41.9,52.8,41.1,52.5,42.8,51.3,43.1,50.3,44.6,51.3,44.5,51.3,45.2,53.0,45.3,53.0,46.9,51.2,47.0,49.1,46.4,46.7,44.6,47.6,43.7,47.5,43.0,49.1,41.3],[-110.2,77.7,-112.0,77.4,-113.5,77.7,-109.8,78.0,-110.2,77.7],[24.7,77.8,22.5,77.4,20.7,77.7,21.4,77.9,20.8,78.2,22.9,78.5,24.7,77.8],[-109.7,78.6,-112.5,78.4,-111.5,78.8,-109.7,78.6],[-95.8,78.1,-98.1,78.1,-98.6,78.9,-95.6,78.4,-95.8,78.1],[-100.1,78.3,-99.7,77.9,-105.2,78.4,-104.2,78.7,-105.4,78.9,-105.5,79.3,-100.8,78.8,-100.1,78.3],[105.1,78.3,99.4,77.9,102.1,79.3,105.4,78.7,105.1,78.3],[18.2,79.7,21.5,79.0,19.0,78.6,17.1,76.8,15.9,76.8,13.8,77.4,14.7,77.7,11.2,78.9,10.4,79.7,17.0,80.0,18.2,79.7],[25.4,80.4,27.4,80.1,25.9,79.5,23.0,79.4,20.1,79.6,17.4,80.3,25.4,80.4],[51.1,80.5,47.6,80.0,46.5,80.2,47.1,80.6,44.9,80.6,51.5,80.7,51.1,80.5],[99.9,78.9,95.0,79.0,91.2,80.3,95.9,81.2,100.2,79.8,99.9,78.9],[-87.0,79.7,-85.8,79.3,-89.0,78.3,-90.8,78.2,-92.9,78.3,-94.0,78.8,-93.2,79.4,-95.0,79.4,-96.7,80.2,-94.3,81.0,-94.7,81.2,-92.4,81.3,-87.8,80.3,-87.0,79.7],[-68.5,83.1,-61.9,82.6,-67.7,81.5,-65.5,81.5,-71.2,79.8,-76.9,79.3,-75.5,79.2,-76.2,79.0,-75.4,78.5,-79.8,77.2,-77.9,76.8,-80.6,76.2,-89.5,76.5,-89.6,77.0,-87.8,77.2,-88.3,77.9,-85.0,77.5,-88.0,78.4,-85.1,79.3,-86.9,80.2,-81.8,80.5,-87.6,80.5,-91.6,81.9,-85.5,82.7,-83.2,82.3,-82.4,82.9,-79.3,83.1,-68.5,83.1],[-27.1,83.5,-20.9,82.7,-22.7,82.3,-31.9,82.2,-24.8,81.8,-22.9,82.1,-22.1,81.7,-23.2,81.2,-15.8,81.9,-12.8,81.7,-12.2,81.3,-20.1,80.2,-17.7,80.1,-19.7,78.8,-19.7,77.6,-18.5,77.0,-21.7,76.6,-19.8,76.1,-19.6,75.2,-20.7,75.2,-19.4,74.3,-21.6,74.2,-20.4,73.8,-20.8,73.5,-23.6,73.3,-22.3,72.6,-22.3,72.2,-24.3,72.6,-24.8,72.3,-22.1,71.5,-21.8,70.7,-23.5,70.5,-25.5,71.4,-25.2,70.8,-26.4,70.2,-22.4,70.1,-27.8,68.5,-31.8,68.1,-34.2,66.7,-39.8,65.5,-40.7,64.8,-41.2,63.5,-42.8,62.7,-42.4,61.9,-43.4,60.1,-48.3,60.9,-51.6,63.6,-52.3,65.2,-53.7,66.1,-53.3,66.8,-54.0,67.2,-53.0,68.4,-51.5,68.7,-50.9,69.9,-53.5,69.3,-54.7,69.6,-54.4,70.8,-51.4,70.6,-54.0,71.5,-55.8,71.7,-54.7,72.6,-57.3,74.7,-58.6,75.1,-58.6,75.5,-61.3,76.1,-68.5,76.1,-71.4,77.0,-66.8,77.4,-73.3,78.0,-73.2,78.4,-65.7,79.4,-65.3,79.8,-68.0,80.1,-62.2,81.3,-62.6,81.8,-57.2,82.2,-53.0,81.9,-50.4,82.4,-44.5,81.7,-46.9,82.2,-46.8,82.6,-38.6,83.5,-27.1,83.5]];
+var globeLayer="temp";
+var globe={ rotLon:74.01, rotLat:18, drag:null, idle:9999, raf:0 };
+function pointColor(p, layer){
+  if(layer==="temp") return p.temp==null?null:tempColor(p.temp);
+  if(layer==="wind"){ if(p.windSpeed==null) return null; var k=Math.min(1,p.windSpeed/60); return "rgba("+Math.round(34+k*130)+","+Math.round(211-k*60)+","+Math.round(238-k*100)+","+(0.55+k*0.45).toFixed(2)+")"; }
+  if(layer==="precip"){ if(p.precip==null) return null; if(p.precip<=0) return "rgba(120,150,190,0.20)"; var k2=Math.min(1,p.precip/0.6); return "rgba("+Math.round(34+k2*60)+","+Math.round(197-k2*60)+","+Math.round(94+k2*150)+","+(0.5+k2*0.5).toFixed(2)+")"; }
+  if(layer==="cloud"){ if(p.cloud==null) return null; return "rgba(226,236,248,"+(0.10+(p.cloud/100)*0.75).toFixed(2)+")"; }
+  return null;
+}
+function pointRadius(p, layer, base){
+  if(layer==="precip") return (p.precip!=null&&p.precip>0)?base*1.5:base*0.6;
+  if(layer==="wind") return base*(0.8+Math.min(1,(p.windSpeed||0)/50)*0.9);
+  return base;
+}
+function sunVector(now){
+  var start=Date.UTC(now.getUTCFullYear(),0,0); var doy=Math.floor((now.getTime()-start)/86400000);
+  var decl=-23.44*Math.cos(((doy+10)/365)*2*Math.PI)*(Math.PI/180);
+  var hrs=now.getUTCHours()+now.getUTCMinutes()/60; var sunLon=((12-hrs)*15)*(Math.PI/180);
+  return [Math.cos(decl)*Math.cos(sunLon), Math.cos(decl)*Math.sin(sunLon), Math.sin(decl)];
+}
+function drawGlobe(nowMs){
+  var canvas=document.getElementById("globeCanvas"); if(!canvas) return;
+  var ctx=canvas.getContext("2d"); if(!ctx) return;
+  var size=canvas.clientWidth; if(size===0) return;
+  var dpr=Math.min(2, window.devicePixelRatio||1);
+  if(canvas.width!==Math.round(size*dpr)){ canvas.width=Math.round(size*dpr); canvas.height=Math.round(size*dpr); }
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,size,size);
+  var cx=size/2, cy=size/2, R=size/2-6;
+  var rotLon=globe.rotLon*Math.PI/180, rotLat=globe.rotLat*Math.PI/180;
+  var cosRL=Math.cos(rotLat), sinRL=Math.sin(rotLat);
+  function project(latDeg, lonDeg){
+    var la=latDeg*Math.PI/180, lo=lonDeg*Math.PI/180+rotLon;
+    var x=Math.cos(la)*Math.sin(lo), y0=Math.sin(la), z0=Math.cos(la)*Math.cos(lo);
+    var y=y0*cosRL-z0*sinRL, z=y0*sinRL+z0*cosRL;
+    return [cx+x*R, cy-y*R, z];
+  }
+  var ocean=ctx.createRadialGradient(cx-R*0.35, cy-R*0.35, R*0.1, cx, cy, R);
+  ocean.addColorStop(0,"#1d3a5f"); ocean.addColorStop(0.6,"#12283f"); ocean.addColorStop(1,"#0a1626");
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fillStyle=ocean; ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.clip();
+  ctx.strokeStyle="rgba(140,170,220,0.16)"; ctx.lineWidth=1;
+  for(var la=-75; la<=75; la+=15){ ctx.beginPath(); var st=false; for(var lo=-180; lo<=180; lo+=4){ var pr=project(la,lo); if(pr[2]>0){ if(!st){ ctx.moveTo(pr[0],pr[1]); st=true; } else ctx.lineTo(pr[0],pr[1]); } else st=false; } ctx.stroke(); }
+  for(var lo2=-180; lo2<180; lo2+=15){ ctx.beginPath(); var st2=false; for(var la2=-90; la2<=90; la2+=4){ var pr2=project(la2,lo2); if(pr2[2]>0){ if(!st2){ ctx.moveTo(pr2[0],pr2[1]); st2=true; } else ctx.lineTo(pr2[0],pr2[1]); } else st2=false; } ctx.stroke(); }
+  if(!LAND_VEC) buildLandVec();
+  var cosA=Math.cos(rotLon), sinA=Math.sin(rotLon);
+  ctx.beginPath();
+  LAND_VEC.forEach(function(pts){
+    var poly=[];
+    for(var i=0;i<pts.length;i++){
+      var vx=pts[i][0], vy=pts[i][1], vz=pts[i][2];
+      var rx=vx*cosA-vy*sinA, ry=vx*sinA+vy*cosA;
+      poly.push([rx,ry,vz, vz*sinRL+rx*cosRL]);
+    }
+    var n=poly.length, start=-1;
+    for(var s0=0;s0<n;s0++){ if(poly[s0][3]>=0){ start=s0; break; } }
+    if(start<0) return;
+    function scr(p){ var up=p[2]*cosRL-p[0]*sinRL; return [cx+p[1]*R, cy-up*R]; }
+    var out=[], pendingExit=null, run=[];
+    for(var k=0;k<=n;k++){
+      var cur=poly[(start+k)%n], prv=poly[(start+k-1+n)%n];
+      var curIn=cur[3]>=0, prvIn=prv[3]>=0;
+      if(k===0){ out.push(scr(cur)); continue; }
+      if(curIn!==prvIn){
+        var t=prv[3]/(prv[3]-cur[3]);
+        var cross=[prv[0]+(cur[0]-prv[0])*t, prv[1]+(cur[1]-prv[1])*t, prv[2]+(cur[2]-prv[2])*t];
+        if(curIn){
+          var e=pendingExit?scr(pendingExit):scr(cross), f=scr(cross);
+          var a1=Math.atan2(e[1]-cy, e[0]-cx), a2=Math.atan2(f[1]-cy, f[0]-cx), dir=1;
+          if(run.length){
+            var mid=scr(run[Math.floor(run.length/2)]);
+            var am=Math.atan2(mid[1]-cy, mid[0]-cx);
+            var dCCW=((a2-a1)%(Math.PI*2)+Math.PI*2)%(Math.PI*2), dM=((am-a1)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+            dir = dM<=dCCW ? 1 : -1;
+          }
+          var sweep=dir>0 ? ((a2-a1)%(Math.PI*2)+Math.PI*2)%(Math.PI*2) : -(((a1-a2)%(Math.PI*2)+Math.PI*2)%(Math.PI*2));
+          var stepsA=Math.max(1, Math.ceil(Math.abs(sweep)/(Math.PI/45)));
+          for(var q=1;q<stepsA;q++){ var ang=a1+sweep*q/stepsA; out.push([cx+Math.cos(ang)*R, cy+Math.sin(ang)*R]); }
+          out.push(f); pendingExit=null; run=[];
+        } else {
+          out.push(scr(cross)); pendingExit=cross; run=[];
+        }
+      }
+      if(curIn) out.push(scr(cur)); else if(pendingExit) run.push(cur);
+    }
+    if(out.length>2){
+      ctx.moveTo(out[0][0], out[0][1]);
+      for(var m=1;m<out.length;m++) ctx.lineTo(out[m][0], out[m][1]);
+      ctx.closePath();
+    }
+  });
+  ctx.fillStyle="#2c5f47"; ctx.fill("evenodd");
+  ctx.strokeStyle="rgba(205,238,218,0.35)"; ctx.lineWidth=0.7; ctx.stroke();
+  var sun=sunVector(new Date()); var baseR=Math.max(3,R/42);
+  state.globePoints.forEach(function(p){
+    var pr=project(p.lat,p.lon); if(pr[2]<=0.02) return;
+    var laR=p.lat*Math.PI/180, loR=p.lon*Math.PI/180;
+    var dot=Math.cos(laR)*Math.cos(loR)*sun[0]+Math.cos(laR)*Math.sin(loR)*sun[1]+Math.sin(laR)*sun[2];
+    var col=pointColor(p, globeLayer); if(!col) return;
+    ctx.globalAlpha=(dot<0?0.45:0.95)*Math.min(1,0.35+pr[2]);
+    ctx.beginPath(); ctx.arc(pr[0],pr[1],pointRadius(p,globeLayer,baseR),0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+    if(globeLayer==="wind" && p.windDir!=null && (p.windSpeed||0)>3){
+      var ex=project(p.lat,p.lon+6), nx=project(p.lat+6,p.lon);
+      var rad=(p.windDir+180)*Math.PI/180;
+      var vx=(ex[0]-pr[0])*Math.sin(rad)+(nx[0]-pr[0])*Math.cos(rad);
+      var vy=(ex[1]-pr[1])*Math.sin(rad)+(nx[1]-pr[1])*Math.cos(rad);
+      var len=Math.hypot(vx,vy)||1, L=baseR*2.4;
+      ctx.globalAlpha=0.9; ctx.strokeStyle="#cffafe"; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(pr[0],pr[1]); ctx.lineTo(pr[0]+(vx/len)*L, pr[1]+(vy/len)*L); ctx.stroke();
+    }
+  });
+  ctx.globalAlpha=1;
+  var storms=(state.tropical && state.tropical.ok)?state.tropical.storms:[];
+  storms.forEach(function(st){
+    ctx.lineWidth=2; ctx.strokeStyle="rgba(244,83,106,0.9)"; ctx.setLineDash([5,3]); ctx.beginPath();
+    var pen=false;
+    st.track.forEach(function(tp){ var pr=project(tp.lat,tp.lon); if(pr[2]>0.02){ if(!pen){ ctx.moveTo(pr[0],pr[1]); pen=true; } else ctx.lineTo(pr[0],pr[1]); } else pen=false; });
+    ctx.stroke(); ctx.setLineDash([]);
+    st.track.forEach(function(tp){ var pr=project(tp.lat,tp.lon); if(pr[2]<=0.02) return; ctx.beginPath(); ctx.arc(pr[0],pr[1],2.6,0,Math.PI*2); ctx.fillStyle="#fda4af"; ctx.fill(); });
+    var pr=project(st.lat,st.lon);
+    if(pr[2]>0.02){
+      var pulse=1+0.22*Math.sin(nowMs/320);
+      ctx.beginPath(); ctx.arc(pr[0],pr[1],10*pulse,0,Math.PI*2); ctx.strokeStyle="#f4536a"; ctx.lineWidth=2.2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(pr[0],pr[1],4.2,0,Math.PI*2); ctx.fillStyle="#f4536a"; ctx.fill();
+      ctx.font="bold 11px sans-serif"; ctx.fillStyle="#ffe4e6"; ctx.strokeStyle="rgba(6,12,24,0.8)"; ctx.lineWidth=3;
+      var label=st.category?st.name+" · "+st.category.replace("Category ","Cat "):st.name;
+      ctx.strokeText(label, pr[0]+13, pr[1]+4); ctx.fillText(label, pr[0]+13, pr[1]+4);
+    }
+  });
+  var mp=project(state.place.lat, state.place.lon);
+  if(mp[2]>0){
+    var pulse2=1+0.25*Math.sin(nowMs/350);
+    ctx.beginPath(); ctx.arc(mp[0],mp[1],7*pulse2,0,Math.PI*2); ctx.strokeStyle="#f5a623"; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(mp[0],mp[1],3,0,Math.PI*2); ctx.fillStyle="#f5a623"; ctx.fill();
+  }
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.strokeStyle="rgba(120,170,240,0.45)"; ctx.lineWidth=1.5; ctx.stroke();
+}
+function globeLoop(nowMs){
+  globe.raf=requestAnimationFrame(globeLoop);
+  if(!globe.drag){ globe.idle+=16; if(globe.idle>2500) globe.rotLon+=0.07; }
+  drawGlobe(nowMs||0);
+}
+function initGlobe(){
+  var canvas=document.getElementById("globeCanvas"); if(!canvas) return;
+  canvas.addEventListener("pointerdown", function(e){ globe.drag={x:e.clientX,y:e.clientY}; globe.idle=0; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", function(e){ if(!globe.drag) return; globe.idle=0; globe.rotLon+=(e.clientX-globe.drag.x)*0.35; globe.rotLat=Math.max(-65,Math.min(65, globe.rotLat+(e.clientY-globe.drag.y)*0.25)); globe.drag={x:e.clientX,y:e.clientY}; });
+  function up(){ globe.drag=null; globe.idle=0; }
+  canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
+  if(!globe.raf) globe.raf=requestAnimationFrame(globeLoop);
+}
+
+/* ── Radar ──────────────────────────────────────────────────────────── */
+var radarState={ idx:0, playing:true, timer:null };
+function lon2tile(lon,z){ return Math.floor(((lon+180)/360)*Math.pow(2,z)); }
+function lat2tile(lat,z){ var r=lat*Math.PI/180; return Math.floor(((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2)*Math.pow(2,z)); }
+function renderRadar(){
+  var area=document.getElementById("radarArea"); if(!area) return;
+  var rd=state.radar;
+  if(!rd){
+    area.innerHTML='<div class="darkcard" style="padding:16px"><p style="margin:0;font-size:14px;font-weight:700">Live radar</p><p style="margin:6px 0 0;font-size:14px;color:var(--viewport-dim)">Loading the latest radar frames…</p></div>';
+    return;
+  }
+  if(!rd.host || (!rd.past.length && !rd.nowcast.length)){
+    area.innerHTML='<div class="darkcard" style="padding:16px"><p style="margin:0;font-size:14px;font-weight:700">Live radar</p><p style="margin:6px 0 0;font-size:14px;color:var(--viewport-dim)">Radar frames are unavailable right now. The forecast above is unaffected — try Refresh in a bit.</p></div>';
+    return;
+  }
+  var frames=rd.past.concat(rd.nowcast);
+  if(radarState.idx>=frames.length) radarState.idx=Math.max(0, rd.past.length-1);
+  var frame=frames[radarState.idx]; var Z=6;
+  var cx=lon2tile(state.place.lon,Z), cy=lat2tile(state.place.lat,Z);
+  var cells="";
+  for(var dy=-1; dy<=1; dy++) for(var dx=-1; dx<=1; dx++){
+    var url=rd.host+frame.path+"/256/"+Z+"/"+(cx+dx)+"/"+(cy+dy)+"/2/1_1.png";
+    var ebase="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/"+Z+"/"+(cy+dy)+"/"+(cx+dx);
+    var eref="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/"+Z+"/"+(cy+dy)+"/"+(cx+dx);
+    cells+='<div class="radar-cell"><img src="'+ebase+'" alt="" loading="lazy" onerror="this.style.opacity=0"><img src="'+url+'" alt="" loading="lazy" onerror="this.style.opacity=0"><img src="'+eref+'" alt="" loading="lazy" onerror="this.style.opacity=0"></div>';
+  }
+  var isFc = radarState.idx>=rd.past.length;
+  area.innerHTML='<div class="darkcard" style="overflow:hidden">'+
+    '<div style="position:relative"><div class="radar-grid">'+cells+'</div>'+
+    '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none"><div style="width:16px;height:16px;border-radius:999px;border:2px solid #f5a623;box-shadow:0 0 0 3px rgba(245,166,35,.25)"></div></div>'+
+    '<div style="position:absolute;left:8px;top:8px;background:rgba(6,12,24,.75);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">'+(isFc?"RADAR · FORECAST":"RADAR · LIVE")+'</div>'+
+    '<div class="mono" style="position:absolute;right:8px;bottom:8px;background:rgba(6,12,24,.75);border-radius:6px;padding:3px 8px;font-size:11px">'+esc(formatFrameTime(frame.time, (state.weather&&state.weather.timezone)||state.place.timezone))+'</div></div>'+
+    '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px">'+
+    '<button type="button" id="radarPlay" aria-label="'+(radarState.playing?"Pause radar animation":"Play radar animation")+'" style="width:36px;height:36px;border:none;border-radius:999px;background:#1b2c4a;color:#e8eef7;font-size:15px;flex:0 0 auto">'+(radarState.playing?"⏸":"▶")+'</button>'+
+    '<input type="range" id="radarSlider" aria-label="Radar frame time" min="0" max="'+(frames.length-1)+'" value="'+radarState.idx+'" style="width:100%">'+
+    '<span class="mono" style="font-size:11px;color:var(--viewport-dim);white-space:nowrap">z6 · RainViewer · Map © Esri, USGS, NOAA</span></div></div>';
+  document.getElementById("radarPlay").addEventListener("click", function(){ radarState.playing=!radarState.playing; renderRadar(); setupRadarTimer(); });
+  document.getElementById("radarSlider").addEventListener("input", function(e){ radarState.idx=Number(e.target.value); radarState.playing=false; renderRadar(); });
+  setupRadarTimer();
+}
+function setupRadarTimer(){
+  if(radarState.timer){ clearInterval(radarState.timer); radarState.timer=null; }
+  var rd=state.radar; if(!rd) return;
+  var frames=rd.past.concat(rd.nowcast);
+  if(!radarState.playing || frames.length<2) return;
+  radarState.timer=setInterval(function(){ radarState.idx=(radarState.idx+1)%frames.length; renderRadar(); }, 750);
+}
+
+/* ── Rendering ──────────────────────────────────────────────────────── */
+function $(id){ return document.getElementById(id); }
+function readout(label, value, sub){
+  return '<div><p class="ro-label">'+esc(label)+'</p><p class="ro-value mono">'+esc(value)+'</p>'+(sub?'<p class="ro-sub">'+esc(sub)+'</p>':'')+'</div>';
+}
+function levelStyle(level){
+  if(level==="Active") return "background:rgba(244,83,106,.16);color:var(--severe)";
+  if(level==="Watch") return "background:rgba(245,166,35,.18);color:var(--warn)";
+  return "background:var(--accent-soft);color:var(--accent)";
+}
+function tile(title, value, detail, level){
+  return '<div class="card tile"><div class="tile-head"><p class="tile-label">'+esc(title)+'</p><span class="pill" style="'+levelStyle(level)+'">'+level+'</span></div><p class="tile-value mono">'+esc(value)+'</p><p class="tile-detail">'+esc(detail)+'</p></div>';
+}
+function renderChips(){
+  var saved = state.saved;
+  var html='';
+  function chipBtn(p, label, cls, active){
+    return '<button type="button" class="chip '+(cls||"")+(active?" active":"")+'" data-chip="'+esc(p.name)+'|'+p.lat+'|'+p.lon+'" aria-label="Show weather for '+esc(label)+'">'+esc(label)+'</button>';
+  }
+  var atHome = Math.abs(state.place.lat-DEFAULT_PLACE.lat)<0.01 && Math.abs(state.place.lon-DEFAULT_PLACE.lon)<0.01;
+  html+=chipBtn(DEFAULT_PLACE, "⌂ New York", "", atHome);
+  saved.forEach(function(l){
+    var active=Math.abs(l.lat-state.place.lat)<0.01 && Math.abs(l.lon-state.place.lon)<0.01;
+    html+=chipBtn(l, l.name, "", active);
+  });
+  var placeSaved = saved.some(function(l){ return Math.abs(l.lat-state.place.lat)<0.01 && Math.abs(l.lon-state.place.lon)<0.01; }) || atHome;
+  if(!placeSaved) html+='<button type="button" class="chip" id="saveChip" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">+ Save '+esc(state.place.name)+'</button>';
+  $("chips").innerHTML=html;
+  Array.prototype.forEach.call($("chips").querySelectorAll("[data-chip]"), function(btn){
+    btn.addEventListener("click", function(){
+      var parts=btn.getAttribute("data-chip").split("|");
+      var found=null;
+      [DEFAULT_PLACE].concat(state.saved).forEach(function(p){ if(p.name===parts[0] && Math.abs(p.lat-Number(parts[1]))<0.001) found=p; });
+      if(found) pickPlace(found);
+    });
+  });
+  var sc=$("saveChip"); if(sc) sc.addEventListener("click", function(){ state.saved.push(state.place); persistSaved(); renderChips(); renderSaved(); });
+}
+function renderSaved(){
+  var area=$("savedArea");
+  if(!state.saved.length){
+    area.innerHTML='<p style="font-size:14px;color:var(--dim);margin:0">Nothing saved yet. Search for a town, open its weather, and tap “+ Save”.</p>';
+    return;
+  }
+  area.innerHTML='<div class="card" style="overflow:hidden">'+state.saved.map(function(l,i){
+    return '<div class="saved-row"><button type="button" data-saved-open="'+i+'" style="flex:1;min-width:180px;text-align:left;background:none;border:none;color:var(--text);padding:0"><span style="font-weight:700">'+esc(l.name)+'</span><span style="color:var(--dim)"> · '+esc(l.region)+(l.country?", "+esc(l.country):"")+'</span><span class="mono" style="display:block;font-size:12px;color:var(--dim)">'+l.lat.toFixed(3)+', '+l.lon.toFixed(3)+'</span></button>'+
+    '<button type="button" data-saved-remove="'+i+'" style="border:none;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;background:var(--surface2);color:var(--severe)">Remove</button></div>';
+  }).join("")+'</div>';
+  Array.prototype.forEach.call(area.querySelectorAll("[data-saved-open]"), function(b){ b.addEventListener("click", function(){ pickPlace(state.saved[Number(b.getAttribute("data-saved-open"))]); }); });
+  Array.prototype.forEach.call(area.querySelectorAll("[data-saved-remove]"), function(b){ b.addEventListener("click", function(){ state.saved.splice(Number(b.getAttribute("data-saved-remove")),1); persistSaved(); renderChips(); renderSaved(); }); });
+}
+function renderAlerts(w){
+  var area=$("alertsArea");
+  if(w.alerts.length){
+    area.innerHTML=w.alerts.map(function(a,i){
+      return '<details class="alert-box" '+(i===0?"open":"")+'><summary>⚠ '+esc(a.event)+' — '+esc(a.severity)+'<span style="display:block;font-size:14px;font-weight:600;color:var(--text)">'+esc(a.headline)+'</span></summary>'+
+      '<p style="margin:8px 0 0;font-size:14px;line-height:1.55;white-space:pre-line">'+esc(a.description)+'</p>'+
+      (a.instruction?'<p style="margin:8px 0 0;font-size:14px;font-weight:600;white-space:pre-line">'+esc(a.instruction)+'</p>':'')+
+      '<p class="mono" style="margin:8px 0 0;font-size:12px;color:var(--dim)">'+(a.onset?"From "+timeLabel(a.onset):"")+(a.expires?" · until "+timeLabel(a.expires):"")+' · '+esc(a.sender)+'</p></details>';
+    }).join("");
+  } else {
+    area.innerHTML='<p style="font-size:14px;font-weight:500;color:var(--dim);margin:0">✓ No active NWS watches or warnings for '+esc(state.place.name)+'.'+(w.alertsNote?" "+esc(w.alertsNote):"")+'</p>';
+  }
+}
+function renderFireCard(p, w, err){
+  var redFlag = w ? w.alerts.some(function(a){ return /red flag|fire weather/i.test(a.event); }) : false;
+  var rh=w?w.current.humidity:null, wind=w?w.current.windSpeed:null, gust=w?w.current.windGusts:null;
+  var dry = w!=null && (w.current.precipitation||0)===0;
+  var elevated = redFlag || (rh!=null&&rh<=25&&wind!=null&&wind>=12) || (gust!=null&&gust>=35&&rh!=null&&rh<=30);
+  var watch = !elevated && ((rh!=null&&rh<=30)||(wind!=null&&wind>=15));
+  var flag = redFlag?"Red Flag":elevated?"Elevated":watch?"Watch":"Normal";
+  var flagStyle = elevated?"background:rgba(244,83,106,.16);color:var(--severe)":watch?"background:rgba(245,166,35,.18);color:var(--warn)":"background:var(--accent-soft);color:var(--accent)";
+  var note = !w ? (err?"Live conditions unavailable right now.":"Pulling live conditions…")
+    : redFlag ? "Red Flag / Fire Weather alert in effect for this area — see alerts at the top."
+    : elevated ? "Elevated fire weather: dry air plus wind/gusts. Extra care with any open burning."
+    : watch ? "Some fire-weather factors present (low humidity or breezy). Stay aware."
+    : dry ? "No active fire-weather flags. Currently dry (no precip in the last hour)."
+    : "No active fire-weather flags for this place.";
+  var body = w ?
+    '<p class="mono" style="margin:8px 0 0;font-size:30px;font-weight:600">'+temp(w.current.temperature)+' <span style="font-size:15px;font-weight:500;color:var(--dim)">'+esc(codeInfo(w.current.weatherCode).icon)+' '+esc(codeInfo(w.current.weatherCode).label)+'</span></p>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;font-size:13px">'+
+    '<div><p class="stat-label">Humidity</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+(rh!=null?Math.round(rh)+"%":"—")+'</p></div>'+
+    '<div><p class="stat-label">Wind</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+speed(wind)+' '+compass(w.current.windDir)+'</p></div>'+
+    '<div><p class="stat-label">Gusts</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+speed(gust)+'</p></div>'+
+    '<div><p class="stat-label">Dew point</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+temp(w.current.dewPoint)+'</p></div>'+
+    '<div><p class="stat-label">Precip 1h</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+precip(w.current.precipitation)+'</p></div>'+
+    '<div><p class="stat-label">Feels like</p><p class="mono" style="font-weight:700;margin:2px 0 0">'+temp(w.current.feelsLike)+'</p></div></div>'
+    : '<p style="margin:8px 0 0;font-size:14px;color:var(--dim)">'+esc(note)+'</p>';
+  return '<div class="card" style="padding:16px;'+(elevated?"border-color:var(--severe)":"")+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><p style="margin:0;font-weight:800">'+esc(p.name)+(p.region?', '+esc(p.region):'')+'</p><p class="mono" style="margin:2px 0 0;font-size:12px;color:var(--dim)">'+p.lat.toFixed(4)+', '+p.lon.toFixed(4)+'</p></div>'+
+    '<span class="pill" style="'+flagStyle+'">'+flag+'</span></div>'+body+
+    (w?'<p style="margin:12px 0 0;font-size:13px;line-height:1.45;color:var(--dim)">'+esc(note)+'</p>':'')+
+    '</div>';
+}
+function renderFireDistrict(){
+  var area=$("fireCards"); var w=state.weather;
+  if(!w){ area.innerHTML=""; return; }
+  area.innerHTML='<div style="max-width:640px">'+renderFireCard(state.place, w, false)+'</div>';
+}
+function wireFireButtons(){}
+function renderTropical(w){
+  var area=$("tropicalArea"); var t=state.tropical;
+  if(!t){ area.innerHTML='<p style="font-size:14px;color:var(--dim);margin:0">Checking the National Hurricane Center for active storms…</p>'; return; }
+  if(!t.ok){
+    area.innerHTML='<div class="card" style="padding:16px;border-color:var(--warn)"><p style="margin:0;font-weight:800;color:var(--warn)">Hurricane feed unreachable</p><p style="margin:6px 0 0;font-size:14px;color:var(--dim)">'+esc(t.error||"The NHC feed did not answer.")+' No storm status is shown rather than guessed — tap Refresh to try again, or check <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">nhc.noaa.gov</a> directly. Note: the NHC feed does not send browser sharing headers, so some browsers block the direct read.</p></div>';
+    return;
+  }
+  if(!t.storms.length){
+    area.innerHTML='<div class="card" style="padding:20px"><p style="margin:0;font-size:17px;font-weight:800;color:var(--good)">✓ All clear — no active tropical storms or hurricanes</p><p style="margin:6px 0 0;font-size:14px;color:var(--dim)">The National Hurricane Center is not tracking any active storm in the Atlantic, East Pacific or Central Pacific right now.'+(t.asOf?' Checked '+esc(formatAsOf(t.asOf, w.timezone))+'.':'')+'</p></div>';
+    return;
+  }
+  area.innerHTML=t.storms.map(function(s){
+    var color=tropicalColor(s.category, s.classification);
+    var windTxt = units==="imperial" ? (s.windMph!=null?s.windMph+" mph":"—") : (s.windMph!=null?Math.round(s.windMph*1.60934)+" km/h":"—");
+    var gustTxt = s.gustMph!=null ? (units==="imperial"?s.gustMph+" mph":Math.round(s.gustMph*1.60934)+" km/h") : null;
+    var moveTxt = units==="imperial" ? (s.movementSpeedMph!=null?"at "+s.movementSpeedMph+" mph":"") : (s.movementSpeedMph!=null?"at "+Math.round(s.movementSpeedMph*1.60934)+" km/h":"");
+    var links = (s.advisoryUrl?'<a class="link-pill" href="'+esc(s.advisoryUrl)+'" target="_blank" rel="noopener">NHC public advisory ↗</a> ':'')+
+      (s.graphicsUrl?'<a class="link-pill" href="'+esc(s.graphicsUrl)+'" target="_blank" rel="noopener">Track graphics ↗</a> ':'')+
+      (s.discussionUrl?'<a class="link-pill" href="'+esc(s.discussionUrl)+'" target="_blank" rel="noopener">Forecaster discussion ↗</a>':'');
+    return '<article class="card" style="padding:16px;margin-bottom:14px" aria-label="'+esc(s.classificationLabel)+' '+esc(s.name)+'">'+
+      '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start"><div><p style="margin:0;font-size:20px;font-weight:800">'+esc(s.name)+' <span style="font-size:13px;font-weight:700;color:var(--dim)">'+esc(s.basin)+'</span></p>'+
+      '<p class="mono" style="margin:3px 0 0;font-size:12px;color:var(--dim)">'+esc(formatLatLon(s.lat,s.lon))+' · '+s.lat.toFixed(2)+', '+s.lon.toFixed(2)+(s.lastUpdate?' · NHC update '+esc(new Date(s.lastUpdate).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"})):'')+'</p></div>'+
+      '<span style="border-radius:999px;padding:5px 12px;font-size:14px;font-weight:800;background:'+color+';color:#0b1220">'+esc(s.category||s.classificationLabel)+'</span></div>'+
+      '<div style="display:grid;gap:16px;margin-top:14px" class="storm-grid"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 12px">'+
+      '<div><p class="stat-label">Max winds</p><p class="stat-value mono">'+windTxt+'</p><p class="stat-sub mono">'+(s.intensityKt!=null?s.intensityKt+" kt":"")+(gustTxt?" · gusts "+gustTxt:"")+'</p></div>'+
+      '<div><p class="stat-label">Pressure</p><p class="stat-value mono">'+(s.pressureMb!=null?Math.round(s.pressureMb)+" mb":"—")+'</p><p class="stat-sub mono">'+(s.pressureMb!=null?(s.pressureMb*0.02953).toFixed(2)+" inHg":"")+'</p></div>'+
+      '<div><p class="stat-label">Movement</p><p class="stat-value mono">'+esc(s.movementDirLabel)+(s.movementDir!=null?" "+Math.round(s.movementDir)+"°":"")+'</p><p class="stat-sub mono">'+esc(moveTxt)+'</p></div>'+
+      '<div><p class="stat-label">Classification</p><p class="stat-value" style="font-size:16px">'+esc(s.classificationLabel)+'</p><p class="stat-sub mono">'+esc((s.id||"").toUpperCase())+'</p></div>'+
+      '<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px">'+links+'</div></div>'+
+      '<div><p class="stat-label" style="margin-bottom:4px">NHC forecast track · latitude / longitude</p>'+(s.track.length>=2?trackChartSVG(s):'<p style="font-size:14px;color:var(--dim);margin:0">Forecast track points were not in the latest advisory — current position is plotted on the globe above.</p>')+'</div></div></article>';
+  }).join("")+'<p style="font-size:12px;color:var(--dim);margin:0">Category is the Saffir–Simpson scale from NHC sustained winds.'+(t.asOf?' Feed checked '+esc(formatAsOf(t.asOf, w.timezone))+'.':'')+'</p>'+
+  '<style>@media(min-width:900px){.storm-grid{grid-template-columns:2fr 3fr}}</style>';
+}
+function renderModels(w, d){
+  var area=$("modelArea");
+  if(!w.models){ area.innerHTML='<p style="font-size:14px;color:var(--dim);margin:0">The multi-model feed did not answer for this location. The main forecast above is Open-Meteo\'s best-match blend.</p>'; return; }
+  var m=w.models; var curHour=w.current.time.slice(0,13);
+  var start=m.time.findIndex(function(t){ return t.slice(0,13)>=curHour; }); if(start<0) start=0;
+  var rows=[];
+  for(var i=start;i<Math.min(m.time.length,start+72);i++){
+    rows.push({ label:hourAxisLabel(m.time[i]),
+      e: m.ecmwfTemp[i]!=null?Math.round(tempVal(m.ecmwfTemp[i])):null,
+      g: m.gfsTemp[i]!=null?Math.round(tempVal(m.gfsTemp[i])):null,
+      i: m.iconTemp[i]!=null?Math.round(tempVal(m.iconTemp[i])):null });
+  }
+  if(!rows.length){ area.innerHTML='<p style="font-size:14px;color:var(--dim);margin:0">No model hours available right now.</p>'; return; }
+  var today=w.daily.date[0]||"";
+  function high(arr){ var mx=null; m.time.forEach(function(t,j){ var v=arr[j]; if(t.indexOf(today)===0&&v!=null&&(mx==null||v>mx)) mx=v; }); return mx; }
+  var e=high(m.ecmwfTemp), g=high(m.gfsTemp), ic=high(m.iconTemp);
+  var vals=[e,g,ic].filter(function(v){ return v!=null; });
+  var spread=vals.length>1?Math.max.apply(null,vals)-Math.min.apply(null,vals):null;
+  var spreadTxt = spread!=null ? ' Spread <strong class="mono">'+(units==="imperial"?spread.toFixed(0)+"°F":(spread*5/9).toFixed(0)+"°C")+'</strong>'+(spread<=3?" — models agree, high confidence":spread<=7?" — some disagreement":" — models split, low confidence") : "";
+  area.innerHTML='<div class="card" style="padding:12px"><div style="display:flex;flex-wrap:wrap;gap:6px 18px;padding:2px 4px 8px;font-size:14px"><span>ECMWF high today: <strong class="mono">'+temp(e)+'</strong></span><span>GFS: <strong class="mono">'+temp(g)+'</strong></span><span>ICON: <strong class="mono">'+temp(ic)+'</strong></span><span style="color:var(--dim)">'+spreadTxt+'</span></div>'+
+    modelChartSVG(rows)+'<p style="margin:6px 4px 0;font-size:12px;color:var(--dim)">Next 72 hours of 2 m temperature per model, via Open-Meteo\'s model endpoints. ECMWF IFS is the European model — usually the one to beat.</p></div>';
+}
+function renderMain(){
+  var w=state.weather; if(!w) return;
+  var d=derive(w); var p=state.place;
+  $("placeTitle").innerHTML=esc(p.name)+(p.region?', <span style="color:var(--dim);font-weight:600">'+esc(p.region)+'</span>':"");
+  $("placeMeta").textContent=p.lat.toFixed(4)+", "+p.lon.toFixed(4)+" · "+w.timezone.replace(/_/g," ")+(w.elevation!=null?" · elev "+Math.round(w.elevation*3.28084)+" ft":"");
+  $("asOfLine").textContent="Live · updated "+formatAsOf(w.asOf, w.timezone)+" ("+w.timezone.replace(/_/g," ")+")"+(w.source==="nws"?" · via the National Weather Service backup feed (the primary feed did not answer on this device; a few fields read — where NWS publishes no data)":"");
+  renderAlerts(w);
+  var ci=codeInfo(w.current.weatherCode);
+  $("curCond").textContent=ci.icon+" "+ci.label+(w.current.isDay===0?" · Night":"");
+  $("curTemp").textContent=temp(w.current.temperature);
+  $("curFeels").innerHTML='Feels like <span class="mono" style="font-weight:700;color:var(--viewport-text)">'+temp(w.current.feelsLike)+'</span> &nbsp;·&nbsp; Today '+temp(w.daily.tempMin[0])+" – "+temp(w.daily.tempMax[0]);
+  $("curTime").innerHTML=esc(timeLabel(w.current.time))+"<br>local time";
+  $("curReadouts").innerHTML=
+    readout("Wind", speed(w.current.windSpeed), compass(w.current.windDir)+" · "+Math.round(w.current.windDir||0)+"°")+
+    readout("Gusts", speed(w.current.windGusts))+
+    readout("Humidity", w.current.humidity!=null?Math.round(w.current.humidity)+"%":"—")+
+    readout("Dew point", temp(w.current.dewPoint))+
+    readout("Pressure", w.current.pressure!=null?Math.round(w.current.pressure)+" hPa":"—", w.current.pressure!=null?(w.current.pressure*0.02953).toFixed(2)+" inHg":null)+
+    readout("Cloud cover", w.current.cloudCover!=null?Math.round(w.current.cloudCover)+"%":"—")+
+    readout("Precip now", precip(w.current.precipitation), "last hour")+
+    readout("Visibility", visib(d.curVis))+
+    readout("UV index", d.curUv!=null?Math.round(d.curUv)+" · "+uvCat(d.curUv):"—")+
+    readout("Sunrise", timeLabel(w.daily.sunrise[0]))+
+    readout("Sunset", timeLabel(w.daily.sunset[0]))+
+    readout("Today's UV max", w.daily.uvMax[0]!=null?Math.round(w.daily.uvMax[0])+" · "+uvCat(w.daily.uvMax[0]):"—");
+  /* hourly */
+  $("hourlyChart").innerHTML=hourlyChartSVG(d.hours, d.temps, d.prob);
+  $("hourStrip").innerHTML=d.hours.slice(0,24).map(function(t,k){
+    var pr=d.prob[k];
+    return '<div class="hour-cell"><span style="font-size:11px;font-weight:700;color:var(--dim)">'+(k===0?"Now":esc(hourLabel(t)))+'</span><span style="font-size:18px;margin:3px 0" aria-hidden="true">'+codeInfo(d.codes[k]).icon+'</span><span class="mono" style="font-size:14px;font-weight:700">'+temp(d.temps[k])+'</span><span class="mono" style="font-size:11px;color:'+(pr!=null&&pr>=30?"var(--accent)":"var(--dim)")+'">'+(pr!=null?Math.round(pr)+"%":"—")+'</span></div>';
+  }).join("");
+  /* incidences */
+  var aq=w.airQuality;
+  $("incidenceGrid").innerHTML=
+    tile("⛈ Thunderstorms", d.thunderHours>0?hoursLabel(d.thunderHours).replace("hour","storm hour"):"None forecast",
+      d.maxCape!=null?("Peak CAPE "+Math.round(d.maxCape)+" J/kg"+(d.maxCape>=1000?" — real storm fuel in the air":d.maxCape>=400?" — some instability":" — stable air")+"."):"Instability data unavailable.",
+      d.thunderHours>0?"Active":(d.maxCape||0)>=1000?"Watch":"Quiet")+
+    tile("🌧 Heavy rain", precip(d.totalPrecip)+" / 48h", "Wettest single hour "+precip(d.maxPrecipHour)+".", d.totalPrecip>=1?"Active":d.totalPrecip>=0.4?"Watch":"Quiet")+
+    tile("❄ Snow & ice", !d.snowData?"—":d.totalSnow>0.2?snowAmt(d.totalSnow):"None",
+      !d.snowData?"Snowfall data wasn't in the feed for the next 48h.":d.freezingHours>0?hoursLabel(d.freezingHours)+" of freezing rain/drizzle in the window — ice risk.":d.snowHours>0?hoursLabel(d.snowHours)+" with snow falling.":"No frozen precipitation in the window.",
+      (d.freezingHours>0||d.totalSnow>=10)?"Active":d.totalSnow>0.2?"Watch":"Quiet")+
+    tile("🧊 Freeze", d.minTemp!=null?"Low "+temp(d.minTemp):"—",
+      d.belowFreezing>0?hoursLabel(d.belowFreezing)+" at or below freezing in the next 48 — hoses, pipes and plants need cover.":"No below-freezing hours in the next 48.",
+      (d.minTemp!=null&&d.minTemp<=20)?"Active":d.belowFreezing>0?"Watch":"Quiet")+
+    tile("💨 Damaging wind", d.maxGust!=null?"Gusts "+speed(d.maxGust):"—",
+      (d.maxGust!=null&&d.maxGust>=58)?"Severe-threshold gusts — secure loose gear.":(d.maxGust!=null&&d.maxGust>=40)?"Strong gusts in the window.":"No damaging gusts in the window.",
+      (d.maxGust!=null&&d.maxGust>=58)?"Active":(d.maxGust!=null&&d.maxGust>=40)?"Watch":"Quiet")+
+    tile("🌫 Fog", d.minVis24!=null?"Worst "+visib(d.minVis24):"—",
+      (d.minVis24!=null&&d.minVis24<1000)?"Dense-fog visibility expected in the next 24h — slow down on the road.":(d.minVis24!=null&&d.minVis24<5000)?"Patchy low visibility possible.":"Visibility stays good for 24h.",
+      (d.minVis24!=null&&d.minVis24<1000)?"Active":(d.minVis24!=null&&d.minVis24<5000)?"Watch":"Quiet")+
+    tile("☀ Heat & UV", d.maxFeels!=null?"Feels "+temp(d.maxFeels):"—",
+      "Peak UV today "+(w.daily.uvMax[0]!=null?Math.round(w.daily.uvMax[0])+" ("+uvCat(w.daily.uvMax[0])+")":"—")+".",
+      ((d.maxFeels||0)>=100)?"Active":((d.maxFeels||0)>=90||(w.daily.uvMax[0]||0)>=8)?"Watch":"Quiet")+
+    tile("🫁 Air quality", aq&&aq.aqi!=null?"AQI "+Math.round(aq.aqi):"Unavailable",
+      aq?(aqiCat(aq.aqi)+". PM2.5 "+(aq.pm25!=null?Math.round(aq.pm25)+" µg/m³":"—")+" · Ozone "+(aq.ozone!=null?Math.round(aq.ozone)+" µg/m³":"—")+"."):"CAMS air-quality feed did not answer for this location.",
+      ((aq&&aq.aqi)||0)>150?"Active":((aq&&aq.aqi)||0)>100?"Watch":"Quiet")+
+    tile("🤧 Pollen (CAMS)", aq?"Grass "+pollenLevel(aq.pollenGrass):"Unavailable",
+      aq?("Birch "+pollenLevel(aq.pollenBirch)+" · Alder "+pollenLevel(aq.pollenAlder)+" · Ragweed "+pollenLevel(aq.pollenRagweed)+". Counts are grains/m³ from the European CAMS model."):"Pollen feed did not answer for this location.",
+      (aq&&[aq.pollenGrass,aq.pollenBirch,aq.pollenRagweed].some(function(v){ return (v||0)>=50; }))?"Watch":"Quiet");
+  renderTropical(w);
+  renderModels(w, d);
+  /* daily */
+  var allMax=Math.max.apply(null, w.daily.tempMax.filter(function(v){ return v!=null; }));
+  var allMin=Math.min.apply(null, w.daily.tempMin.filter(function(v){ return v!=null; }));
+  var span=Math.max(1, allMax-allMin);
+  $("dailyList").innerHTML=w.daily.date.map(function(dt,i){
+    var lo=w.daily.tempMin[i], hi=w.daily.tempMax[i];
+    var left=lo!=null?((lo-allMin)/span)*100:0, width=(lo!=null&&hi!=null)?Math.max(4,((hi-lo)/span)*100):0;
+    var pp=w.daily.precipProbMax[i];
+    return '<div class="day-row"><div style="width:86px;flex:0 0 auto"><p style="margin:0;font-size:14px;font-weight:700;line-height:1.2">'+esc(weekday(dt,i))+'</p><p class="mono" style="margin:0;font-size:12px;color:var(--dim)">'+esc(shortDate(dt))+'</p></div>'+
+    '<span style="font-size:20px" role="img" aria-label="'+esc(codeInfo(w.daily.weatherCode[i]).label)+'">'+codeInfo(w.daily.weatherCode[i]).icon+'</span>'+
+    '<div style="width:110px;flex:0 0 auto;font-size:12px;color:var(--dim)" class="day-desc">'+esc(codeInfo(w.daily.weatherCode[i]).label)+((w.daily.snowfallSum[i]||0)>0.2?'<span style="display:block">Snow '+esc(snowAmt(w.daily.snowfallSum[i]))+'</span>':'')+'</div>'+
+    '<span class="mono" style="width:52px;flex:0 0 auto;text-align:right;font-size:12px;font-weight:700;color:'+((pp||0)>=30?"var(--accent)":"var(--dim)")+'">'+((pp||0)>0?"💧"+Math.round(pp)+"%":"")+'</span>'+
+    '<span class="mono" style="font-size:14px;color:var(--dim)">'+temp(lo)+'</span>'+
+    '<div class="tempbar"><div style="left:'+left+'%;width:'+width+'%"></div></div>'+
+    '<span class="mono" style="font-size:14px;font-weight:700">'+temp(hi)+'</span>'+
+    '<span class="mono" style="width:86px;flex:0 0 auto;text-align:right;font-size:12px;color:var(--dim)" class="day-gust">💨 '+esc(speed(w.daily.gustMax[i]))+'</span></div>';
+  }).join("")+'<style>@media(max-width:640px){.day-desc,.day-gust{display:none}}</style>';
+  /* globe note + footer */
+  var stormNames=(state.tropical&&state.tropical.ok)?state.tropical.storms.map(function(s){ return s.name; }):[];
+  $("globeNote").textContent="Drag to spin. "+state.globePoints.length+" live grid samples from Open-Meteo; the amber ring is "+p.name+", and the dim side of the globe is in night right now."+(stormNames.length?" Red rings with dashed tracks are live NHC tropical storms ("+stormNames.join(", ")+") — full details in the Hurricane tracker below.":"");
+  $("globeAsOf").textContent=state.globeAsOf?" Globe grid as of "+formatAsOf(state.globeAsOf, w.timezone)+".":"";
+  renderChips(); renderSaved(); renderRadar(); renderFireDistrict();
+}
+
+/* ── Device location ──────────────────────────────────────────────── */
+function setLocStatus(msg){
+  var el=$("locStatus"); if(!el) return;
+  if(!msg){ el.hidden=true; el.textContent=""; return; }
+  el.textContent=msg; el.hidden=false;
+}
+function devicePlace(lat, lon){
+  /* Name the spot via a keyless reverse-geocode lookup; if that feed does
+     not answer quickly, the coordinates still load fine under a plain label. */
+  var named = fetchJson("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+lat+"&longitude="+lon+"&localityLanguage=en", null, 0).then(function(r){
+    var name = (typeof r.city==="string"&&r.city) || (typeof r.locality==="string"&&r.locality) || "Current location";
+    return { name:name, region:(typeof r.principalSubdivision==="string"?r.principalSubdivision:""), country:(typeof r.countryName==="string"?r.countryName:""), lat:lat, lon:lon, timezone:"auto", device:true };
+  });
+  var slow = new Promise(function(res){ setTimeout(function(){ res(null); }, 6000); });
+  return Promise.race([named, slow]).then(function(p){
+    return p || { name:"Current location", region:"", country:"", lat:lat, lon:lon, timezone:"auto", device:true };
+  }).catch(function(){
+    return { name:"Current location", region:"", country:"", lat:lat, lon:lon, timezone:"auto", device:true };
+  });
+}
+function requestPosition(deadlineMs){
+  /* getCurrentPosition with a short timeout is what kept failing with
+     "Location timed out": a cold GPS fix routinely takes longer than 10s.
+     watchPosition instead streams fixes — a fast coarse network fix first,
+     then refinements — so accept the first usable fix, keep the best one
+     seen, and only report a timeout once the deadline passes. */
+  return new Promise(function(resolve, reject){
+    var settled=false, best=null, watchId=null, timer=null;
+    function accOf(pos){ return (pos && pos.coords && typeof pos.coords.accuracy==="number") ? pos.coords.accuracy : Infinity; }
+    function finish(fn, val){
+      if(settled) return; settled=true;
+      if(timer) clearTimeout(timer);
+      if(watchId!=null){ try{ navigator.geolocation.clearWatch(watchId); }catch(e){} }
+      fn(val);
+    }
+    timer=setTimeout(function(){
+      if(best) finish(resolve, best);
+      else { var e=new Error("Location timed out"); e.code=3; finish(reject, e); }
+    }, deadlineMs);
+    try{
+      watchId=navigator.geolocation.watchPosition(function(pos){
+        if(!best || accOf(pos) < accOf(best)) best=pos;
+        if(accOf(pos) <= 1000) finish(resolve, pos);
+      }, function(err){
+        if(err && err.code===1) finish(reject, err);
+        /* POSITION_UNAVAILABLE / TIMEOUT from the watch are transient —
+           a fix often still arrives before the deadline, so keep waiting. */
+      }, { enableHighAccuracy:true, maximumAge:60000 });
+    }catch(e){ finish(reject, e); }
+  });
+}
+function useDeviceLocation(auto){
+  if(!("geolocation" in navigator)){
+    if(!auto) setLocStatus("This browser doesn't offer device location — use Search above to pick your town instead.");
+    return;
+  }
+  if(!auto) setLocStatus("Locating your device… a first fix can take up to half a minute.");
+  requestPosition(auto?15000:30000).then(function(pos){
+    return devicePlace(pos.coords.latitude, pos.coords.longitude);
+  }).then(function(p){
+    if(auto && state.userPicked) return; /* visitor already chose a place — don't override it */
+    setLocStatus("Showing weather for your device location. The location is only used to load the forecast for this spot — it is never stored or shared.");
+    pickPlace(p, true);
+  }).catch(function(err){
+    if(auto) return; /* denied / off / timed out on open: stay on the starter place, no error screen */
+    if(err && err.code===1) setLocStatus("Location permission was denied — use Search above to pick your town, or allow location in your browser settings and try again.");
+    else if(err && err.code===3) setLocStatus("Location timed out before your device could get a fix — try again, or use Search above.");
+    else setLocStatus("Device location isn't available right now — use Search above to pick your town.");
+  });
+}
+
+/* ── Flow ───────────────────────────────────────────────────────────── */
+function pickPlace(p, isAutoLocation){
+  if(!isAutoLocation) state.userPicked=true;
+  mainRetryCount=0;
+  state.place=p; globe.rotLon=-p.lon; radarState.idx=0;
+  $("loadingState").hidden=false; $("errorState").hidden=true; $("mainContent").hidden=true;
+  $("placeTitle").innerHTML=esc(p.name)+(p.region?', <span style="color:var(--dim);font-weight:600">'+esc(p.region)+'</span>':"");
+  loadMain(false);
+}
+var mainRetryTimer=null, mainRetryCount=0, loadSeq=0;
+function loadMain(force){
+  var p=state.place;
+  var seq=++loadSeq;
+  if(mainRetryTimer){ clearTimeout(mainRetryTimer); mainRetryTimer=null; }
+  getWeatherCached(p.lat, p.lon, force).then(function(w){
+    if(seq!==loadSeq) return; /* a newer load (place change, refresh) superseded this one */
+    state.weather=w; mainRetryCount=0;
+    $("loadingState").hidden=true; $("errorState").hidden=true; $("mainContent").hidden=false;
+    renderMain();
+    startAux();
+  }).catch(function(err){
+    if(seq!==loadSeq) return;
+    startAux();
+    if(state.weather){ renderMain(); return; }
+    $("loadingState").hidden=true; $("mainContent").hidden=true; $("errorState").hidden=false;
+    var raw=(err&&err.message)||"";
+    var em;
+    if(/failed to fetch|load failed|network|abort|timed? ?out/i.test(raw)){
+      em="Couldn't reach the weather service — the connection dropped, timed out, or was blocked before any data came back, even after retrying. Nothing is shown rather than guessed.";
+    } else {
+      em=(raw||"No data came back."); if(!/[.!?]$/.test(em)) em+="."; em+=" Nothing is shown rather than guessed — try again in a moment.";
+    }
+    if(mainRetryCount<8){
+      /* Don't leave the visitor stranded on the error screen: keep
+         retrying in the background with a growing pause. Phones that
+         lose the data connection for a few seconds (a tunnel, a weak
+         signal, the browser waking up) recover on their own this way. */
+      mainRetryCount++;
+      var delay=Math.min(30000, 5000*mainRetryCount);
+      em+=" This page keeps retrying on its own — or tap Try again now.";
+      mainRetryTimer=setTimeout(function(){ mainRetryTimer=null; loadMain(true); }, delay);
+    } else {
+      em+=" Check your internet connection and tap Try again.";
+    }
+    $("errorText").textContent=em;
+    var det=$("errorDetail");
+    if(det){ det.textContent=raw?("Last error: "+raw):""; det.hidden=!raw; }
+  });
+}
+function refreshAll(){
+  state.forceTick++;
+  mainRetryCount=0;
+  loadMain(true);
+  loadGlobe(); loadRadarData(); loadTropicalData();
+}
+/* The non-critical feeds (globe grid, radar, hurricane tracker) start
+   only once the main forecast settles, so on a slow phone connection
+   they never compete with the one read the page depends on. A safety
+   timer in init starts them anyway if the main load never settles. */
+var auxStarted=false;
+function startAux(){
+  if(auxStarted) return; auxStarted=true;
+  loadGlobe(); loadRadarData(); loadTropicalData();
+}
+function loadGlobe(){
+  fetchGlobe().then(function(g){ state.globePoints=g.points; state.globeAsOf=g.asOf; $("globeFallback").hidden=g.points.length>0; document.getElementById("globeCanvas").style.display=g.points.length?"block":"none"; if(state.weather) renderMainSoft(); }).catch(function(){});
+}
+function loadRadarData(){ fetchRadar().then(function(r){ state.radar=r; radarState.idx=Math.max(0,(r.past.length||1)-1); if(state.weather) renderRadar(); }); }
+function loadTropicalData(){ fetchTropical().then(function(t){ state.tropical=t; if(state.weather) renderTropical(state.weather); }); }
+function renderMainSoft(){ /* globe count note only, avoid full re-render loops */
+  var w=state.weather; if(!w) return;
+  var stormNames=(state.tropical&&state.tropical.ok)?state.tropical.storms.map(function(s){ return s.name; }):[];
+  $("globeNote").textContent="Drag to spin. "+state.globePoints.length+" live grid samples from Open-Meteo; the amber ring is "+state.place.name+", and the dim side of the globe is in night right now."+(stormNames.length?" Red rings with dashed tracks are live NHC tropical storms ("+stormNames.join(", ")+") — full details in the Hurricane tracker below.":"");
+  $("globeAsOf").textContent=state.globeAsOf?" Globe grid as of "+formatAsOf(state.globeAsOf, w.timezone)+".":"";
+}
+
+/* ── Wire up ────────────────────────────────────────────────────────── */
+(function init(){
+  /* layer buttons */
+  $("layerBtns").innerHTML=Object.keys(LAYER_META).map(function(k){
+    return '<button type="button" class="layer-btn'+(k===globeLayer?" on":"")+'" data-layer="'+k+'" aria-pressed="'+(k===globeLayer)+'">'+LAYER_META[k].label+'</button>';
+  }).join("");
+  function syncLegend(){ $("legendMin").textContent=LAYER_META[globeLayer].min; $("legendMax").textContent=LAYER_META[globeLayer].max; $("legendBar").style.background=LAYER_META[globeLayer].gradient; }
+  syncLegend();
+  Array.prototype.forEach.call($("layerBtns").querySelectorAll("[data-layer]"), function(b){
+    b.addEventListener("click", function(){
+      globeLayer=b.getAttribute("data-layer");
+      Array.prototype.forEach.call($("layerBtns").querySelectorAll("[data-layer]"), function(x){ var on=x===b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on?"true":"false"); });
+      syncLegend();
+    });
+  });
+  $("unitF").addEventListener("click", function(){ if(units==="imperial") return; units="imperial"; $("unitF").classList.add("on"); $("unitC").classList.remove("on"); if(state.weather) renderMain(); });
+  $("unitC").addEventListener("click", function(){ if(units==="metric") return; units="metric"; $("unitC").classList.add("on"); $("unitF").classList.remove("on"); if(state.weather) renderMain(); });
+  $("refreshBtn").addEventListener("click", refreshAll);
+  $("retryBtn").addEventListener("click", refreshAll);
+  $("locBtn").addEventListener("click", function(){ useDeviceLocation(false); });
+  /* search */
+  var debounce=null;
+  $("searchToggle").addEventListener("click", function(){
+    var wrap=$("searchWrap"); var open=wrap.hidden;
+    wrap.hidden=!open; $("searchToggle").setAttribute("aria-expanded", open?"true":"false");
+    if(open) $("searchInput").focus();
+  });
+  $("searchInput").addEventListener("input", function(e){
+    var q=e.target.value.trim();
+    clearTimeout(debounce);
+    if(q.length<2){ $("searchResults").hidden=true; return; }
+    debounce=setTimeout(function(){
+      searchLocations(q).then(function(results){
+        var box=$("searchResults");
+        if(!results.length){ box.innerHTML='<p style="padding:10px 14px;font-size:14px;color:var(--dim);margin:0">No places match that search.</p>'; box.hidden=false; return; }
+        box.innerHTML=results.map(function(r,i){
+          return '<button type="button" data-search-idx="'+i+'"><span style="font-weight:700">'+esc(r.name)+'</span><span style="color:var(--dim)"> · '+esc(r.region)+(r.country?", "+esc(r.country):"")+'</span><span class="mono" style="display:block;font-size:12px;color:var(--dim)">'+r.lat.toFixed(3)+', '+r.lon.toFixed(3)+'</span></button>';
+        }).join("");
+        box.hidden=false;
+        Array.prototype.forEach.call(box.querySelectorAll("[data-search-idx]"), function(b){
+          b.addEventListener("click", function(){
+            var r=results[Number(b.getAttribute("data-search-idx"))];
+            box.hidden=true; $("searchWrap").hidden=true; $("searchInput").value="";
+            pickPlace(r);
+          });
+        });
+      });
+    }, 350);
+  });
+  /* If the connection comes back (or the tab returns to the front)
+     while the error screen is up, retry right away instead of waiting
+     for the backoff timer. */
+  window.addEventListener("online", function(){ if(!state.weather && !$("errorState").hidden) loadMain(true); });
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden && !state.weather && !$("errorState").hidden) loadMain(true); });
+  initGlobe();
+  loadMain(false);
+  useDeviceLocation(true);
+  setTimeout(startAux, 15000);
+})();
+</script>
+</body>
+</html>
